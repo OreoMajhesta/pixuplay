@@ -14,7 +14,12 @@ export async function handleEmbedProxy(req: Request, clientIp: string): Promise<
   }
 
   const url = new URL(req.url);
-  const targetUrl = url.searchParams.get("url");
+  let targetUrl = url.searchParams.get("url") || "";
+  while (targetUrl.includes("/api/pixuplay/embed-proxy?url=")) {
+    targetUrl = decodeURIComponent(targetUrl.split("/api/pixuplay/embed-proxy?url=").pop() || "");
+  }
+  targetUrl = targetUrl.trim();
+
   if (!targetUrl) {
     return new Response("Missing url param", {
       status: 400,

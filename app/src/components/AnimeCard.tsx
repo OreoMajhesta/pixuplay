@@ -46,6 +46,8 @@ export const AnimeCard = React.memo<AnimeCardProps>(({
           src={poster}
           alt={title}
           loading="lazy"
+          width="240"
+          height="320"
           className="w-full h-full object-cover transition-transform duration-300 group-hover/card:scale-105"
         />
 

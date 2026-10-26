@@ -75,7 +75,7 @@ export async function checkOdcloudResolutions(baseMp4Url: string): Promise<Array
           Referer: "https://otakudesu.blog/",
           "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko)",
         },
-        signal: AbortSignal.timeout(2500),
+        signal: AbortSignal.timeout(900),
       });
       if (res.ok) {
         return { quality: q, url: testUrl };
@@ -87,6 +87,8 @@ export async function checkOdcloudResolutions(baseMp4Url: string): Promise<Array
   const resolved = await Promise.all(checks);
   return resolved.filter(Boolean) as Array<{ quality: string; url: string }>;
 }
+
+const CACHE_TTL_STREAM = 15 * 60 * 1000; // 15 minutes stream cache
 
 export async function resolveStream(
   animeIdOrSlug: string,
@@ -109,7 +111,7 @@ export async function resolveStream(
 }> {
   const cacheKey = `${animeIdOrSlug}_${epNum}`;
   const cached = CACHE.stream.get(cacheKey);
-  if (cached && Date.now() - cached.timestamp < CACHE_TTL_SHORT) {
+  if (cached && Date.now() - cached.timestamp < CACHE_TTL_STREAM) {
     return cached.data;
   }
 

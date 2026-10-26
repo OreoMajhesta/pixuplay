@@ -73,12 +73,12 @@ export const WatchMetadata: React.FC<WatchMetadataProps> = ({
           </div>
         </div>
 
-        {/* Action Buttons */}
-        <div className="flex items-center gap-2 flex-wrap">
+        {/* Action Buttons: 2x2 grid on mobile, row on sm+ */}
+        <div className="grid grid-cols-2 sm:flex sm:items-center gap-2 w-full sm:w-auto">
           {/* Like Button */}
           <button
             onClick={onToggleLike}
-            className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer border ${
+            className={`flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer border ${
               hasLiked
                 ? 'bg-red-600 text-white border-red-500 shadow-lg shadow-red-950/50'
                 : 'bg-neutral-900 hover:bg-neutral-800 text-neutral-300 hover:text-white border-white/10'
@@ -91,7 +91,7 @@ export const WatchMetadata: React.FC<WatchMetadataProps> = ({
           {/* Watchlist Button */}
           <button
             onClick={() => onToggleWatchlist(anime)}
-            className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer border ${
+            className={`flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer border ${
               isWatchlist
                 ? 'bg-white text-black border-white'
                 : 'bg-neutral-900 hover:bg-neutral-800 text-neutral-300 hover:text-white border-white/10'
@@ -104,7 +104,7 @@ export const WatchMetadata: React.FC<WatchMetadataProps> = ({
           {/* Share Button */}
           <button
             onClick={handleShare}
-            className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-neutral-900 hover:bg-neutral-800 text-neutral-300 hover:text-white transition-all cursor-pointer border border-white/10 text-xs font-bold"
+            className="flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-xl bg-neutral-900 hover:bg-neutral-800 text-neutral-300 hover:text-white transition-all cursor-pointer border border-white/10 text-xs font-bold"
           >
             {copiedShare ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Share2 className="w-3.5 h-3.5" />}
             <span>{copiedShare ? 'Tersalin' : 'Bagikan'}</span>
@@ -113,7 +113,7 @@ export const WatchMetadata: React.FC<WatchMetadataProps> = ({
           {/* Nobar Watch Party Button */}
           <button
             onClick={onOpenNobar}
-            className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer border ${
+            className={`flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer border ${
               nobarRoom
                 ? 'bg-red-600 text-white border-red-500 shadow-lg'
                 : 'bg-neutral-900 hover:bg-neutral-800 text-neutral-300 hover:text-white border-white/10'

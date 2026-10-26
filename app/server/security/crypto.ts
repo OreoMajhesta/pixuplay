@@ -87,13 +87,16 @@ export function sanitizeSafeUrl(input: unknown): string {
   if (typeof input !== "string") return "";
   const trimmed = input.trim();
   if (!trimmed) return "";
+  if (trimmed.startsWith("data:image/")) {
+    // Allow base64 data URLs up to 2MB for user avatars
+    return trimmed.length <= 2097152 ? trimmed : "";
+  }
   if (
     trimmed.startsWith("https://") ||
     trimmed.startsWith("http://") ||
-    trimmed.startsWith("/assets/") ||
-    trimmed.startsWith("data:image/")
+    trimmed.startsWith("/assets/")
   ) {
-    return trimmed.slice(0, 500);
+    return trimmed.slice(0, 2048);
   }
   return "";
 }

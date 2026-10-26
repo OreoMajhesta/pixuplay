@@ -7,6 +7,8 @@ import {
   Film,
   Radio,
   Sparkles,
+  MessageSquare,
+  Info,
 } from 'lucide-react';
 import {
   Anime,
@@ -503,9 +505,148 @@ export const WatchPage: React.FC<WatchPageProps> = ({
     return false;
   };
 
-  const getEmbedUrl = (server: StreamServer) => {
+  // Trigger floating reaction emojis
+  const triggerFloatingReaction = (emoji: string) => {
+    const id = `${Date.now()}-${Math.random()}`;
+    const x = 15 + Math.random() * 70;
+    const scale = 0.8 + Math.random() * 0.6;
+    setFloatingEmojis((prev) => [...prev.slice(-15), { id, emoji, x, scale }]);
+    setTimeout(() => {
+      setFloatingEmojis((prev) => prev.filter((item) => item.id !== id));
+    }, 2800);
+  };
+
+  // Start Nobar Realtime Client
+  const startNobarClient = (roomId: string, role: 'host' | 'guest', userName: string) => {
+    nobarClientRef.current?.destroy();
+
+    const userAvatar = currentUser?.avatar || localStorage.getItem('pixuplay_avatar') || '';
+    const client = new NobarClient(roomId, role, userName, userAvatar);
+
+    client.onStatusChange = (connected) => {
+      setNobarConnected(connected);
+    };
+
+    client.onChat = (msg) => {
+      setNobarChat((prev) => [...prev, msg]);
+    };
+
+    client.onReaction = (emoji) => {
+      triggerFloatingReaction(emoji);
+    };
+
+    client.onSync = (ev: NobarSyncEvent) => {
+      if (role === 'guest') {
+        if (ev.episode && ev.episode !== episode) {
+          onSelectEpisode(ev.episode);
+        }
+
+        if (videoRef.current) {
+          const diff = Math.abs(videoRef.current.currentTime - ev.currentTime);
+          if (diff > 2.5) {
+            videoRef.current.currentTime = ev.currentTime;
+          }
+          if (ev.isPlaying && videoRef.current.paused) {
+            videoRef.current.play().catch(() => {});
+          } else if (!ev.isPlaying && !videoRef.current.paused) {
+            videoRef.current.pause();
+          }
+        }
+      }
+    };
+
+    client.onRoomDisbanded = (msg) => {
+      alert(msg);
+      handleLeaveNobarRoom(false);
+    };
+
+    nobarClientRef.current = client;
+  };
+
+  // Create Nobar Room
+  const handleCreateNobarRoom = async (hostName: string) => {
+    const finalName = hostName || currentUser?.name || localStorage.getItem('pixuplay_nickname') || 'Host';
+    const res = await createNobarRoom(
+      detailedAnime.animeId || detailedAnime.id,
+      title,
+      episode,
+      currentServer?.url || '',
+      finalName
+    );
+    if (res && res.room) {
+      try {
+        localStorage.setItem(`pixuplay_nobar_host_${res.roomId}`, res.hostId);
+        localStorage.setItem(`pixuplay_nobar_hostname_${res.roomId}`, finalName);
+      } catch {}
+      setNobarRoom(res.room);
+      setNobarRole('host');
+      setNobarChat(res.room.chat || []);
+      setSidebarTab('chat');
+      setMobileActiveTab('chat');
+      onNobarRoomChange?.(res.roomId);
+      startNobarClient(res.roomId, 'host', finalName);
+    }
+  };
+
+  // Leave Nobar Room
+  const handleLeaveNobarRoom = (shouldBroadcastDisband = true) => {
+    if (nobarRole === 'host' && shouldBroadcastDisband) {
+      nobarClientRef.current?.sendDisband();
+    }
+    nobarClientRef.current?.destroy();
+    setNobarRoom(null);
+    setNobarRole('guest');
+    setNobarConnected(false);
+    setNobarChat([]);
+    onNobarRoomChange?.(null);
+  };
+
+  // Auto-connect to Nobar room if initialNobarRoomId is provided
+  useEffect(() => {
+    if (!initialNobarRoomId) return;
+    let isMounted = true;
+
+    const connectToRoom = async () => {
+      const room = await getNobarRoom(initialNobarRoomId);
+      if (isMounted && room) {
+        let isHost = false;
+        try {
+          const savedHostId = localStorage.getItem(`pixuplay_nobar_host_${room.id}`);
+          if (savedHostId && savedHostId === room.hostId) isHost = true;
+        } catch {}
+
+        const role: 'host' | 'guest' = isHost ? 'host' : 'guest';
+        const savedName =
+          currentUser?.name ||
+          localStorage.getItem(`pixuplay_nobar_hostname_${room.id}`) ||
+          localStorage.getItem('pixuplay_nickname') ||
+          'Penonton';
+
+        setNobarRoom(room);
+        setNobarRole(role);
+        setNobarChat(room.chat || []);
+        setSidebarTab('chat');
+        setMobileActiveTab('chat');
+        startNobarClient(room.id, role, savedName);
+      }
+    };
+
+    connectToRoom();
+    return () => {
+      isMounted = false;
+      nobarClientRef.current?.destroy();
+    };
+  }, [initialNobarRoomId]);
+
+  useEffect(() => {
+    return () => {
+      nobarClientRef.current?.destroy();
+    };
+  }, []);
+
+  const getEmbedUrl = (server?: StreamServer | null) => {
     if (!server?.url) return '';
-    return `/api/pixuplay/embed-proxy?url=${encodeURIComponent(server.url)}`;
+    return server.url;
   };
 
   return (
@@ -636,6 +777,64 @@ export const WatchPage: React.FC<WatchPageProps> = ({
             onSelectEpisode={onSelectEpisode}
           />
 
+          {/* Mobile View Tab Switcher (Live Chat / Komentar / Sinopsis) */}
+          <div className="lg:hidden flex items-center bg-[#141414] border border-white/5 rounded-xl p-1 gap-1">
+            <button
+              onClick={() => setMobileActiveTab('comments')}
+              className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                mobileActiveTab === 'comments'
+                  ? 'bg-neutral-800 text-white shadow-md'
+                  : 'text-neutral-400 hover:text-white'
+              }`}
+            >
+              <MessageSquare className="w-3.5 h-3.5" />
+              <span>Komentar ({comments.length})</span>
+            </button>
+            <button
+              onClick={() => setMobileActiveTab('chat')}
+              className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                mobileActiveTab === 'chat'
+                  ? 'bg-red-600 text-white shadow-md'
+                  : 'text-neutral-400 hover:text-white'
+              }`}
+            >
+              <Radio className="w-3.5 h-3.5" />
+              <span>Live Chat {nobarRoom && <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />}</span>
+            </button>
+            <button
+              onClick={() => setMobileActiveTab('detail')}
+              className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                mobileActiveTab === 'detail'
+                  ? 'bg-neutral-800 text-white shadow-md'
+                  : 'text-neutral-400 hover:text-white'
+              }`}
+            >
+              <Info className="w-3.5 h-3.5" />
+              <span>Sinopsis</span>
+            </button>
+          </div>
+
+          {/* Mobile Live Chat Panel */}
+          {mobileActiveTab === 'chat' && (
+            <div className="lg:hidden h-[480px]">
+              <NobarRoomPanel
+                room={nobarRoom}
+                role={nobarRole}
+                isConnected={nobarConnected}
+                chatMessages={nobarChat}
+                onSendMessage={(txt) => {
+                  if (nobarClientRef.current) nobarClientRef.current.sendChat(txt);
+                }}
+                onSendReaction={(em) => {
+                  if (nobarClientRef.current) nobarClientRef.current.sendReaction(em);
+                }}
+                onCreateRoom={handleCreateNobarRoom}
+                onLeaveRoom={handleLeaveNobarRoom}
+                defaultUserName={currentUser?.name}
+              />
+            </div>
+          )}
+
           <WatchDiscussion
             comments={comments}
             currentUser={currentUser}
@@ -685,25 +884,8 @@ export const WatchPage: React.FC<WatchPageProps> = ({
                 onSendReaction={(em) => {
                   if (nobarClientRef.current) nobarClientRef.current.sendReaction(em);
                 }}
-                onCreateRoom={async (hostName) => {
-                  const res = await createNobarRoom(
-                    detailedAnime.animeId || detailedAnime.id,
-                    title,
-                    episode,
-                    currentServer?.url || '',
-                    currentUser?.name || hostName || 'Host'
-                  );
-                  if (res && res.room) {
-                    setNobarRoom(res.room);
-                    setNobarRole('host');
-                    onNobarRoomChange?.(res.roomId);
-                  }
-                }}
-                onLeaveRoom={() => {
-                  if (nobarClientRef.current) nobarClientRef.current.destroy();
-                  setNobarRoom(null);
-                  onNobarRoomChange?.(null);
-                }}
+                onCreateRoom={handleCreateNobarRoom}
+                onLeaveRoom={handleLeaveNobarRoom}
                 defaultUserName={currentUser?.name}
               />
             </div>

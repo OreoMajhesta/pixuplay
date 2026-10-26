@@ -172,13 +172,20 @@ export const WatchDiscussion: React.FC<WatchDiscussionProps> = ({
                           <img
                             src={item.avatar}
                             alt={item.user}
+                            onError={(e) => {
+                              (e.currentTarget as HTMLElement).style.display = 'none';
+                              const fallback = e.currentTarget.nextElementSibling as HTMLElement;
+                              if (fallback) fallback.style.display = 'flex';
+                            }}
                             className="w-6 h-6 rounded-full object-cover border border-neutral-700 flex-shrink-0"
                           />
-                        ) : (
-                          <div className="w-6 h-6 rounded-full bg-neutral-800 text-white font-bold text-[10px] flex items-center justify-center flex-shrink-0">
-                            {item.user.charAt(0).toUpperCase()}
-                          </div>
-                        )}
+                        ) : null}
+                        <div
+                          style={{ display: item.avatar ? 'none' : 'flex' }}
+                          className="w-6 h-6 rounded-full bg-neutral-800 text-white font-bold text-[10px] items-center justify-center flex-shrink-0"
+                        >
+                          {item.user.charAt(0).toUpperCase()}
+                        </div>
                         <span className="text-xs font-bold text-white">{item.user}</span>
                         <span className="text-[10px] text-neutral-500">{item.time}</span>
                       </div>
@@ -235,13 +242,20 @@ export const WatchDiscussion: React.FC<WatchDiscussionProps> = ({
                                     <img
                                       src={reply.avatar}
                                       alt={reply.user}
+                                      onError={(e) => {
+                                        (e.currentTarget as HTMLElement).style.display = 'none';
+                                        const fallback = e.currentTarget.nextElementSibling as HTMLElement;
+                                        if (fallback) fallback.style.display = 'flex';
+                                      }}
                                       className="w-5 h-5 rounded-full object-cover border border-neutral-700 flex-shrink-0"
                                     />
-                                  ) : (
-                                    <div className="w-5 h-5 rounded-full bg-neutral-800 text-white font-bold text-[9px] flex items-center justify-center flex-shrink-0">
-                                      {reply.user.charAt(0).toUpperCase()}
-                                    </div>
-                                  )}
+                                  ) : null}
+                                  <div
+                                    style={{ display: reply.avatar ? 'none' : 'flex' }}
+                                    className="w-5 h-5 rounded-full bg-neutral-800 text-white font-bold text-[9px] items-center justify-center flex-shrink-0"
+                                  >
+                                    {reply.user.charAt(0).toUpperCase()}
+                                  </div>
                                   <span className="text-[11px] font-bold text-white">{reply.user}</span>
                                   {reply.replyToUser && (
                                     <span className="text-[10px] text-neutral-400">
