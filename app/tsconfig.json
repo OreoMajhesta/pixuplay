@@ -13,5 +13,5 @@
     "strict": false,
     "types": ["bun-types"]
   },
-  "include": ["src", "server.ts"]
+  "include": ["src", "server", "server.ts"]
 }

@@ -3,6 +3,7 @@ import { Search, X, Loader2 } from 'lucide-react';
 import { Anime } from '../types';
 import { searchAnime } from '../api';
 import { AnimeCard } from './AnimeCard';
+import { useDebounce } from '../hooks/useDebounce';
 
 interface SearchModalProps {
   isOpen: boolean;
@@ -20,6 +21,7 @@ export const SearchModal: React.FC<SearchModalProps> = ({
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<Anime[]>([]);
   const [loading, setLoading] = useState(false);
+  const debouncedQuery = useDebounce(query, 350);
 
   useEffect(() => {
     if (!isOpen) {
@@ -28,19 +30,23 @@ export const SearchModal: React.FC<SearchModalProps> = ({
       return;
     }
 
-    const timer = setTimeout(async () => {
-      if (query.trim().length >= 2) {
-        setLoading(true);
-        const data = await searchAnime(query);
-        setResults(data);
-        setLoading(false);
-      } else {
-        setResults([]);
-      }
-    }, 350);
+    let isMounted = true;
+    if (debouncedQuery.trim().length >= 2) {
+      setLoading(true);
+      searchAnime(debouncedQuery.trim()).then((data) => {
+        if (isMounted) {
+          setResults(data);
+          setLoading(false);
+        }
+      });
+    } else {
+      setResults([]);
+    }
 
-    return () => clearTimeout(timer);
-  }, [query, isOpen]);
+    return () => {
+      isMounted = false;
+    };
+  }, [debouncedQuery, isOpen]);
 
   // Handle ESC
   useEffect(() => {

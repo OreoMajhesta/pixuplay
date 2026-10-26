@@ -10,7 +10,7 @@ interface AnimeCardProps {
   rank?: number;
 }
 
-export const AnimeCard: React.FC<AnimeCardProps> = ({
+export const AnimeCard = React.memo<AnimeCardProps>(({
   anime,
   onSelect,
   onQuickPlay,
@@ -107,4 +107,6 @@ export const AnimeCard: React.FC<AnimeCardProps> = ({
       </div>
     </article>
   );
-};
+});
+
+AnimeCard.displayName = 'AnimeCard';

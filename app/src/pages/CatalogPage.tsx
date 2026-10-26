@@ -3,6 +3,7 @@ import { Film, Filter, Search, Sparkles, Loader2 } from 'lucide-react';
 import { Anime } from '../types';
 import { AnimeCard } from '../components/AnimeCard';
 import { getAnimeTitle, getAnimeByGenre } from '../api';
+import { useDebounce } from '../hooks/useDebounce';
 
 interface CatalogPageProps {
   animeList: Anime[];
@@ -69,6 +70,7 @@ export const CatalogPage: React.FC<CatalogPageProps> = ({
   initialSortBy = 'popular',
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
+  const debouncedSearchQuery = useDebounce(searchQuery, 300);
   const [selectedGenre, setSelectedGenre] = useState(initialGenre);
   const [selectedStatus, setSelectedStatus] = useState(initialStatus);
   const [sortBy, setSortBy] = useState(initialSortBy);
@@ -128,8 +130,8 @@ export const CatalogPage: React.FC<CatalogPageProps> = ({
     let result = [...activeList];
 
     // Search query filter
-    if (searchQuery.trim()) {
-      const q = searchQuery.toLowerCase();
+    if (debouncedSearchQuery.trim()) {
+      const q = debouncedSearchQuery.toLowerCase();
       result = result.filter((a) => {
         const title = getAnimeTitle(a).toLowerCase();
         return title.includes(q);
@@ -157,7 +159,7 @@ export const CatalogPage: React.FC<CatalogPageProps> = ({
     }
 
     return result;
-  }, [activeList, searchQuery, selectedStatus, sortBy]);
+  }, [activeList, debouncedSearchQuery, selectedStatus, sortBy]);
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8 animate-fade-in">

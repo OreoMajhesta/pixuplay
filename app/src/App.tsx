@@ -1,15 +1,16 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Navbar } from './components/Navbar';
-import { HomePage } from './pages/HomePage';
-import { SchedulePage } from './pages/SchedulePage';
-import { CatalogPage } from './pages/CatalogPage';
-import { LibraryPage } from './pages/LibraryPage';
-import { ProfilePage } from './pages/ProfilePage';
 import { DetailModal } from './components/DetailModal';
-import { PlayerModal } from './components/PlayerModal';
-import { WatchPage } from './pages/WatchPage';
 import { FloatingMiniPlayer } from './components/FloatingMiniPlayer';
 import { SearchModal } from './components/SearchModal';
+import { PageSkeleton } from './components/common/PageSkeleton';
+
+const HomePage = React.lazy(() => import('./pages/HomePage').then((m) => ({ default: m.HomePage })));
+const SchedulePage = React.lazy(() => import('./pages/SchedulePage').then((m) => ({ default: m.SchedulePage })));
+const CatalogPage = React.lazy(() => import('./pages/CatalogPage').then((m) => ({ default: m.CatalogPage })));
+const LibraryPage = React.lazy(() => import('./pages/LibraryPage').then((m) => ({ default: m.LibraryPage })));
+const ProfilePage = React.lazy(() => import('./pages/ProfilePage').then((m) => ({ default: m.ProfilePage })));
+const WatchPage = React.lazy(() => import('./pages/WatchPage').then((m) => ({ default: m.WatchPage })));
 import { ContentWarningModal, checkIsSensitiveContent } from './components/ContentWarningModal';
 import { DonateModal } from './components/DonateModal';
 import { ConfirmDeleteModal } from './components/ConfirmDeleteModal';
@@ -803,112 +804,114 @@ export const App: React.FC = () => {
 
       {/* Main Page Content */}
       <main className="flex-1">
-        {playingAnime && !isMinimized ? (
-          <WatchPage
-            key={`watch-${playingAnime.animeId || playingAnime.id}-${playingEpisode}`}
-            anime={playingAnime}
-            episode={playingEpisode}
-            initialResumeTime={initialResumeTime}
-            initialIsPlaying={playbackIsPlaying}
-            initialNobarRoomId={activeNobarRoomId}
-            watchlist={watchlist}
-            favorites={favorites}
-            allAnimeList={catalogList}
-            currentUser={currentUser}
-            onOpenLogin={() => {
-              handleClosePlayer();
-              handleNavigateTab('profil');
-            }}
-            onBackToHome={handleClosePlayer}
-            onMinimize={handleMinimizePlayer}
-            onSelectEpisode={(ep) => {
-              setPlayingEpisode(ep);
-              setInitialResumeTime(0);
-            }}
-            onServerChange={setCurrentStreamServer}
-            onToggleFavorite={handleToggleFavorite}
-            onToggleWatchlist={handleToggleWatchlist}
-            onSaveHistory={handleSaveHistory}
-            onNobarRoomChange={handleNobarRoomChange}
-            onPlaybackSync={handlePlaybackSync}
-            onSelectAnime={(related, isNobarSync) => {
-              if (isNobarSync) {
-                actuallyPlayEpisode(related, 1, 0, true);
-              } else {
-                handlePlayEpisode(related, 1);
-              }
-            }}
-          />
-        ) : (
-          <>
-            {activeTab === 'beranda' && (
-              <HomePage
-                trending={trending}
-                ongoing={ongoing}
-                completed={completed}
-                shounen={shounen}
-                isekai={isekai}
-                classics={classics}
-                onSelectAnime={setSelectedDetailAnime}
-                onQuickPlay={handlePlayEpisode}
-                onToggleWatchlist={handleToggleWatchlist}
-                watchlist={watchlist}
-                onNavigateTab={handleNavigateTab}
-              />
-            )}
+        <React.Suspense fallback={<PageSkeleton />}>
+          {playingAnime && !isMinimized ? (
+            <WatchPage
+              key={`watch-${playingAnime.animeId || playingAnime.id}-${playingEpisode}`}
+              anime={playingAnime}
+              episode={playingEpisode}
+              initialResumeTime={initialResumeTime}
+              initialIsPlaying={playbackIsPlaying}
+              initialNobarRoomId={activeNobarRoomId}
+              watchlist={watchlist}
+              favorites={favorites}
+              allAnimeList={catalogList}
+              currentUser={currentUser}
+              onOpenLogin={() => {
+                handleClosePlayer();
+                handleNavigateTab('profil');
+              }}
+              onBackToHome={handleClosePlayer}
+              onMinimize={handleMinimizePlayer}
+              onSelectEpisode={(ep) => {
+                setPlayingEpisode(ep);
+                setInitialResumeTime(0);
+              }}
+              onServerChange={setCurrentStreamServer}
+              onToggleFavorite={handleToggleFavorite}
+              onToggleWatchlist={handleToggleWatchlist}
+              onSaveHistory={handleSaveHistory}
+              onNobarRoomChange={handleNobarRoomChange}
+              onPlaybackSync={handlePlaybackSync}
+              onSelectAnime={(related, isNobarSync) => {
+                if (isNobarSync) {
+                  actuallyPlayEpisode(related, 1, 0, true);
+                } else {
+                  handlePlayEpisode(related, 1);
+                }
+              }}
+            />
+          ) : (
+            <>
+              {activeTab === 'beranda' && (
+                <HomePage
+                  trending={trending}
+                  ongoing={ongoing}
+                  completed={completed}
+                  shounen={shounen}
+                  isekai={isekai}
+                  classics={classics}
+                  onSelectAnime={setSelectedDetailAnime}
+                  onQuickPlay={handlePlayEpisode}
+                  onToggleWatchlist={handleToggleWatchlist}
+                  watchlist={watchlist}
+                  onNavigateTab={handleNavigateTab}
+                />
+              )}
 
-            {activeTab === 'jadwal' && (
-              <SchedulePage
-                onSelectAnime={setSelectedDetailAnime}
-                onQuickPlay={handlePlayEpisode}
-              />
-            )}
+              {activeTab === 'jadwal' && (
+                <SchedulePage
+                  onSelectAnime={setSelectedDetailAnime}
+                  onQuickPlay={handlePlayEpisode}
+                />
+              )}
 
-            {activeTab === 'katalog' && (
-              <CatalogPage
-                animeList={catalogList}
-                onSelectAnime={setSelectedDetailAnime}
-                onQuickPlay={handlePlayEpisode}
-                initialStatus={catalogFilter.status}
-                initialGenre={catalogFilter.genre}
-                initialSortBy={catalogFilter.sortBy}
-              />
-            )}
+              {activeTab === 'katalog' && (
+                <CatalogPage
+                  animeList={catalogList}
+                  onSelectAnime={setSelectedDetailAnime}
+                  onQuickPlay={handlePlayEpisode}
+                  initialStatus={catalogFilter.status}
+                  initialGenre={catalogFilter.genre}
+                  initialSortBy={catalogFilter.sortBy}
+                />
+              )}
 
-            {activeTab === 'library' && (
-              <LibraryPage
-                history={history}
-                favorites={favorites}
-                watchlist={watchlist}
-                allAnimeList={catalogList}
-                onPlayEpisode={handlePlayEpisode}
-                onSelectAnime={setSelectedDetailAnime}
-                onRemoveHistoryItem={handleRemoveHistoryItem}
-                onRemoveAnimeHistory={handleRemoveAnimeHistory}
-                onClearAllHistory={handleClearAllHistory}
-                onRemoveFavorite={handleRemoveFavorite}
-                onRemoveWatchlist={handleRemoveWatchlist}
-              />
-            )}
+              {activeTab === 'library' && (
+                <LibraryPage
+                  history={history}
+                  favorites={favorites}
+                  watchlist={watchlist}
+                  allAnimeList={catalogList}
+                  onPlayEpisode={handlePlayEpisode}
+                  onSelectAnime={setSelectedDetailAnime}
+                  onRemoveHistoryItem={handleRemoveHistoryItem}
+                  onRemoveAnimeHistory={handleRemoveAnimeHistory}
+                  onClearAllHistory={handleClearAllHistory}
+                  onRemoveFavorite={handleRemoveFavorite}
+                  onRemoveWatchlist={handleRemoveWatchlist}
+                />
+              )}
 
-            {activeTab === 'profil' && (
-              <ProfilePage
-                currentUser={currentUser}
-                history={history}
-                favorites={favorites}
-                watchlist={watchlist}
-                onClearHistory={handleClearAllHistory}
-                onResetAllData={handleResetAllData}
-                onGoogleLogin={handleGoogleLogin}
-                onLogout={handleLogout}
-                onRefreshUser={async () => {
-                  const res = await fetchCurrentUserData();
-                  if (res?.user) setCurrentUser(res.user);
-                }}
-              />
-            )}
-          </>
-        )}
+              {activeTab === 'profil' && (
+                <ProfilePage
+                  currentUser={currentUser}
+                  history={history}
+                  favorites={favorites}
+                  watchlist={watchlist}
+                  onClearHistory={handleClearAllHistory}
+                  onResetAllData={handleResetAllData}
+                  onGoogleLogin={handleGoogleLogin}
+                  onLogout={handleLogout}
+                  onRefreshUser={async () => {
+                    const res = await fetchCurrentUserData();
+                    if (res?.user) setCurrentUser(res.user);
+                  }}
+                />
+              )}
+            </>
+          )}
+        </React.Suspense>
       </main>
 
       {/* Footer */}
