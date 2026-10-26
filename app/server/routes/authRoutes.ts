@@ -35,8 +35,8 @@ export async function handleAuthRoutes(req: Request, url: URL, clientIp: string)
     return jsonResponse({ status: true, ...result.data });
   }
 
-  // 2. Current User Profile & Sync Data
-  if (pathname === "/api/pixuplay/auth/me" && req.method === "GET") {
+  // 2. Current User Profile & Sync Data (/api/pixuplay/user/data or /api/pixuplay/auth/me)
+  if ((pathname === "/api/pixuplay/user/data" || pathname === "/api/pixuplay/auth/me") && req.method === "GET") {
     const user = getSessionUser(req);
     if (!user) {
       return jsonResponse({ status: false, message: "Sesi tidak ditemukan atau telah berakhir" }, 401);

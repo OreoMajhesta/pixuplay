@@ -2,10 +2,11 @@ import Bun, { serve } from "bun";
 import fs from "fs";
 import { PORT, SCRAPER_SOCKET } from "./config/env";
 import { initDatabase } from "./db/schema";
-import { getClientIp, globalSecurityHeaders } from "./security/rateLimiter";
+import { getClientIp, globalSecurityHeaders, jsonResponse } from "./security/rateLimiter";
 import { handleAnimeRoutes } from "./routes/animeRoutes";
 import { handleAuthRoutes } from "./routes/authRoutes";
 import { handleInteractionRoutes } from "./routes/interactionRoutes";
+import { handleNobarRoutes } from "./routes/nobarRoutes";
 import { handleEmbedProxy } from "./routes/embedProxyRoute";
 import { handleStaticFile } from "./routes/staticRoutes";
 import { createNobarWebSocketHandlers, NOBAR_ROOMS, NobarRoom, NobarWebSocketData } from "./websocket/nobarWebSocket";
@@ -93,6 +94,15 @@ serverInstance = serve<NobarWebSocketData>({
     // Authentication & User cloud sync
     const authRes = await handleAuthRoutes(req, url, clientIp);
     if (authRes) return authRes;
+
+    // Nobar Watch Party HTTP endpoints
+    const nobarRes = await handleNobarRoutes(req, url, clientIp, () => serverInstance);
+    if (nobarRes) return nobarRes;
+
+    // Safeguard for API routes: NEVER let /api/* fall through to SPA HTML
+    if (pathname.startsWith("/api/")) {
+      return jsonResponse({ status: false, message: "Endpoint API tidak ditemukan" }, 404);
+    }
 
     // Static assets & SPA fallback
     return await handleStaticFile(pathname);
