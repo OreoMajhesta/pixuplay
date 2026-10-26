@@ -191,11 +191,14 @@ export function addComment(
   return { status: true, comment };
 }
 
-export function deleteComment(commentId: number, userId: string): boolean {
+export function deleteComment(commentId: number, userId: string, authUserId?: string): boolean {
   try {
     const row = db.query("SELECT id, user_id FROM comments WHERE id = ?").get(commentId) as any;
     if (!row) return false;
-    if (row.user_id !== userId) return false;
+    const isOwner =
+      (userId && String(row.user_id) === String(userId)) ||
+      (authUserId && String(row.user_id) === String(authUserId));
+    if (!isOwner) return false;
 
     db.query("DELETE FROM comments WHERE id = ? OR parent_id = ?").run(commentId, commentId);
     return true;

@@ -51,41 +51,74 @@ export async function handleEmbedProxy(req: Request, clientIp: string): Promise<
     });
 
     let html = await res.text();
-    const origin = new URL(targetUrl).origin;
+    const finalTargetUrl = res.url || targetUrl;
+    const baseDir = new URL("./", finalTargetUrl).href;
 
-    // 1. Strip Cloudflare RUM & analytics beacon scripts to eliminate cross-origin CORS errors
+    // 1. Rewrite relative script and link tags to absolute URLs to guarantee Playerjs and assets load
+    html = html.replace(/<script\b([^>]*)\bsrc=['"]([^'"]+)['"]([^>]*)>/gi, (match, prefix, src, suffix) => {
+      try {
+        const absSrc = new URL(src, finalTargetUrl).href;
+        return `<script${prefix}src="${absSrc}"${suffix}>`;
+      } catch {
+        return match;
+      }
+    });
+
+    html = html.replace(/<link\b([^>]*)\bhref=['"]([^'"]+)['"]([^>]*)>/gi, (match, prefix, href, suffix) => {
+      try {
+        const absHref = new URL(href, finalTargetUrl).href;
+        return `<link${prefix}href="${absHref}"${suffix}>`;
+      } catch {
+        return match;
+      }
+    });
+
+    // 2. Prevent desustream's inline script from corrupting player config with iframe's query parameters (net::ERR_INVALID_URL fix)
+    html = html.replace(/location\.href\.substr\([^)]*indexOf\(['"]html\?['"]\)\s*\+\s*5\)/g, '""');
+
+    // 3. Strip Cloudflare RUM & analytics beacon scripts to eliminate cross-origin CORS errors
     html = html.replace(/<script[^>]*cloudflareinsights[^>]*>[\s\S]*?<\/script>/gi, "");
     html = html.replace(/<script[^>]*beacon\.min\.js[^>]*>[\s\S]*?<\/script>/gi, "");
     html = html.replace(/<script[^>]*data-cf-beacon[^>]*>[\s\S]*?<\/script>/gi, "");
     html = html.replace(/<script[^>]*cdn-cgi\/rum[^>]*>[\s\S]*?<\/script>/gi, "");
 
-    // 2. Client-side XHR & Fetch telemetry interceptor stub
+    // 4. Client-side XHR & Fetch telemetry interceptor stub (properly opens XHR to prevent InvalidStateError on setRequestHeader)
     const rumInterceptor = `<script>
 (function(){
-  var origOpen = XMLHttpRequest.prototype.open;
-  XMLHttpRequest.prototype.open = function(m, u) {
-    if (typeof u === "string" && u.indexOf("/cdn-cgi/rum") !== -1) {
-      this.send = function() {};
-      return;
-    }
-    return origOpen.apply(this, arguments);
-  };
-  if (window.fetch) {
-    var origFetch = window.fetch;
-    window.fetch = function(u, p) {
-      if (typeof u === "string" && u.indexOf("/cdn-cgi/rum") !== -1) {
-        return Promise.resolve(new Response(""));
-      }
-      return origFetch.apply(this, arguments);
+  try {
+    var origOpen = XMLHttpRequest.prototype.open;
+    var origSend = XMLHttpRequest.prototype.send;
+    XMLHttpRequest.prototype.open = function(m, u) {
+      try {
+        if (typeof u === "string" && (u.indexOf("/cdn-cgi/rum") !== -1 || u.indexOf("cloudflareinsights") !== -1)) {
+          this._isRum = true;
+          return origOpen.call(this, "GET", "data:text/plain,", true);
+        }
+      } catch(e) {}
+      return origOpen.apply(this, arguments);
     };
-  }
+    XMLHttpRequest.prototype.send = function() {
+      if (this._isRum) return;
+      return origSend.apply(this, arguments);
+    };
+    if (window.fetch) {
+      var origFetch = window.fetch;
+      window.fetch = function(u, p) {
+        if (typeof u === "string" && (u.indexOf("/cdn-cgi/rum") !== -1 || u.indexOf("cloudflareinsights") !== -1)) {
+          return Promise.resolve(new Response(""));
+        }
+        return origFetch.apply(this, arguments);
+      };
+    }
+  } catch(e) {}
 })();
 </script>`;
 
+    const baseTag = `<base href="${baseDir}">`;
     if (html.includes("<head>")) {
-      html = html.replace("<head>", `<head><base href="${origin}/">${rumInterceptor}`);
+      html = html.replace("<head>", `<head>${baseTag}${rumInterceptor}`);
     } else {
-      html = `<base href="${origin}/">${rumInterceptor}` + html;
+      html = `${baseTag}${rumInterceptor}` + html;
     }
 
     return new Response(html, {

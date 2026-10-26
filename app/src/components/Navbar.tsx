@@ -114,9 +114,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               <img
                 src={logoNav}
                 alt="PIXUPLAY"
-                width="120"
-                height="40"
-                className="h-9 sm:h-10 w-auto max-w-[150px] sm:max-w-[200px] aspect-[27/9] object-contain transition-transform group-hover:scale-105"
+                className="h-8 sm:h-9 w-auto object-contain transition-transform group-hover:scale-105"
               />
             </button>
 

@@ -76,20 +76,26 @@ export async function handleInteractionRoutes(req: Request, url: URL, clientIp: 
     return jsonResponse(result, result.status ? 200 : 400);
   }
 
-  // 4. Delete Comment
-  if (pathname === "/api/pixuplay/comments" && req.method === "DELETE") {
-    const user = getSessionUser(req);
-    if (!user) {
-      return jsonResponse({ status: false, message: "Login diperlukan untuk menghapus komentar" }, 401);
-    }
-
+  // 4. Delete Comment (Supports DELETE /api/pixuplay/comments and POST /api/pixuplay/comments/delete)
+  if (
+    (pathname === "/api/pixuplay/comments" && req.method === "DELETE") ||
+    (pathname === "/api/pixuplay/comments/delete" && req.method === "POST")
+  ) {
     const { data: body } = await parseJsonBody(req, 2048);
-    const commentId = parseInt(String(body?.commentId || url.searchParams.get("id")), 10);
+    const commentId = parseInt(String(body?.commentId || body?.id || url.searchParams.get("id")), 10);
     if (!commentId) {
       return jsonResponse({ status: false, message: "ID komentar tidak valid" }, 400);
     }
 
-    const success = deleteComment(commentId, user.id);
+    const user = getSessionUser(req);
+    const bodyUserId = sanitizeSlug(String(body?.userId || ""));
+    const effectiveUserId = user?.id || bodyUserId;
+
+    if (!effectiveUserId && !user) {
+      return jsonResponse({ status: false, message: "Login atau identitas pengguna diperlukan untuk menghapus komentar" }, 401);
+    }
+
+    const success = deleteComment(commentId, effectiveUserId, user?.id);
     if (!success) {
       return jsonResponse({ status: false, message: "Komentar tidak ditemukan atau Anda bukan pemilik komentar ini" }, 403);
     }
