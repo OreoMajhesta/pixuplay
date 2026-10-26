@@ -91,9 +91,11 @@ export async function getAnimeDetail(id: string | number): Promise<Anime | null>
 export async function getStreamData(
   id: string | number,
   ep: number,
-  title: string
+  title: string = ''
 ): Promise<StreamData | null> {
-  const url = `/api/pixuplay/stream/${id}/${ep}?title=${encodeURIComponent(title)}`;
+  const url = title
+    ? `/api/pixuplay/stream/${id}/${ep}?title=${encodeURIComponent(title)}`
+    : `/api/pixuplay/stream/${id}/${ep}`;
   const data = await fetchJson<StreamData>(url);
   if (data && data.servers) {
     data.servers = data.servers.filter((srv) => {

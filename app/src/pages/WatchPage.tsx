@@ -260,7 +260,7 @@ export const WatchPage: React.FC<WatchPageProps> = ({
 
   // Nobar State
   const [nobarRoom, setNobarRoom] = useState<NobarRoomInfo | null>(null);
-  const [nobarRole, setNobarRole] = useState<'host' | 'viewer'>('viewer');
+  const [nobarRole, setNobarRole] = useState<'host' | 'guest'>('guest');
   const [nobarConnected, setNobarConnected] = useState<boolean>(false);
   const [nobarChat, setNobarChat] = useState<NobarChatMsg[]>([]);
   const [floatingEmojis, setFloatingEmojis] = useState<Array<{ id: string; emoji: string; x: number; scale?: number }>>([]);
@@ -271,7 +271,7 @@ export const WatchPage: React.FC<WatchPageProps> = ({
     setLoadingStream(true);
     const animeKey = detailedAnime.animeId || detailedAnime.id;
 
-    getStreamData(animeKey, episode)
+    getStreamData(animeKey, episode, title)
       .then((data) => {
         if (!isMounted) return;
         setStreamData(data);
@@ -287,7 +287,7 @@ export const WatchPage: React.FC<WatchPageProps> = ({
     return () => {
       isMounted = false;
     };
-  }, [detailedAnime.animeId, detailedAnime.id, episode]);
+  }, [detailedAnime.animeId, detailedAnime.id, episode, title]);
 
   // Fetch Interactions
   useEffect(() => {
@@ -309,7 +309,7 @@ export const WatchPage: React.FC<WatchPageProps> = ({
   useEffect(() => {
     heartbeatTimerRef.current = setInterval(() => {
       if (videoRef.current && !videoRef.current.paused) {
-        sendWatchHeartbeat(detailedAnime.animeId || detailedAnime.id, episode, 1).catch(() => {});
+        sendWatchHeartbeat(60, String(detailedAnime.animeId || detailedAnime.id), episode).catch(() => {});
       }
     }, 60000);
 
@@ -685,23 +685,22 @@ export const WatchPage: React.FC<WatchPageProps> = ({
                 onSendReaction={(em) => {
                   if (nobarClientRef.current) nobarClientRef.current.sendReaction(em);
                 }}
-                onCreateRoom={async () => {
-                  const newRoom = await createNobarRoom({
-                    animeId: String(detailedAnime.animeId || detailedAnime.id),
-                    animeTitle: title,
+                onCreateRoom={async (hostName) => {
+                  const res = await createNobarRoom(
+                    detailedAnime.animeId || detailedAnime.id,
+                    title,
                     episode,
-                    serverUrl: currentServer?.url || '',
-                    serverType: currentServer?.type || 'direct',
-                    hostName: currentUser?.name || 'Host',
-                  });
-                  if (newRoom) {
-                    setNobarRoom(newRoom);
+                    currentServer?.url || '',
+                    currentUser?.name || hostName || 'Host'
+                  );
+                  if (res && res.room) {
+                    setNobarRoom(res.room);
                     setNobarRole('host');
-                    onNobarRoomChange?.(newRoom.id);
+                    onNobarRoomChange?.(res.roomId);
                   }
                 }}
                 onLeaveRoom={() => {
-                  if (nobarClientRef.current) nobarClientRef.current.disconnect();
+                  if (nobarClientRef.current) nobarClientRef.current.destroy();
                   setNobarRoom(null);
                   onNobarRoomChange?.(null);
                 }}

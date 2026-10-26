@@ -370,7 +370,7 @@ export const WatchDiscussion: React.FC<WatchDiscussionProps> = ({
         message="Apakah kamu yakin ingin menghapus komentar ini secara permanen?"
         itemTitle={deleteModalState.itemTitle}
         onConfirm={handleConfirmDelete}
-        onCancel={() => setDeleteModalState({ isOpen: false })}
+        onClose={() => setDeleteModalState({ isOpen: false })}
       />
     </>
   );

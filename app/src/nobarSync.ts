@@ -235,6 +235,10 @@ export class NobarClient {
     }
   }
 
+  public disconnect() {
+    this.destroy();
+  }
+
   public destroy() {
     this.isDestroyed = true;
     if (this.reconnectTimer) clearTimeout(this.reconnectTimer);
