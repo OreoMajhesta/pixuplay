@@ -1,0 +1,61 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: dark;
+}
+
+/* Custom monochrome scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #000000;
+}
+::-webkit-scrollbar-thumb {
+  background: #252525;
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #444444;
+}
+
+/* Hide scrollbar for clean horizontal rows */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Floating Emoji Reactions Animation (YouTube/TikTok Live Style) */
+@keyframes floatUpAndFade {
+  0% {
+    opacity: 0.2;
+    transform: translateY(0) scale(0.7) rotate(0deg);
+  }
+  15% {
+    opacity: 1;
+    transform: translateY(-50px) scale(1.25) rotate(var(--rot, 5deg));
+  }
+  50% {
+    opacity: 0.95;
+    transform: translateY(-180px) scale(1.15) rotate(calc(var(--rot, 5deg) * -1));
+  }
+  80% {
+    opacity: 0.7;
+    transform: translateY(-300px) scale(1.05) rotate(var(--rot, 5deg));
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-420px) scale(0.8) rotate(calc(var(--rot, 5deg) * -1.5));
+  }
+}
+
+.animate-float-emoji {
+  animation: floatUpAndFade 2.6s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  will-change: transform, opacity;
+}
