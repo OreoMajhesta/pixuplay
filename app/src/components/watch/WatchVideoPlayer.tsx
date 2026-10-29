@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import {
   AlertCircle,
   Tv,
@@ -6,6 +6,8 @@ import {
   RefreshCw,
   Settings,
   Check,
+  Maximize,
+  Minimize,
 } from 'lucide-react';
 import { StreamServer } from '../../types';
 
@@ -68,8 +70,116 @@ export const WatchVideoPlayer: React.FC<WatchVideoPlayerProps> = ({
 }) => {
   const [isControlsVisible, setIsControlsVisible] = useState<boolean>(true);
   const [isQualityMenuOpen, setIsQualityMenuOpen] = useState<boolean>(false);
+  const [isFullscreen, setIsFullscreen] = useState<boolean>(false);
+  const playerContainerRef = useRef<HTMLDivElement>(null);
   const controlsTimeoutRef = useRef<any>(null);
   const qualityMenuRef = useRef<HTMLDivElement>(null);
+
+  const toggleFullscreen = useCallback(() => {
+    const doc = document as any;
+    const isFull = !!(
+      doc.fullscreenElement ||
+      doc.webkitFullscreenElement ||
+      doc.mozFullScreenElement ||
+      doc.msFullscreenElement
+    );
+
+    if (isFull) {
+      if (doc.exitFullscreen) {
+        doc.exitFullscreen().catch(() => {});
+      } else if (doc.webkitExitFullscreen) {
+        doc.webkitExitFullscreen();
+      } else if (doc.mozCancelFullScreen) {
+        doc.mozCancelFullScreen();
+      } else if (doc.msExitFullscreen) {
+        doc.msExitFullscreen();
+      }
+    } else {
+      const container = playerContainerRef.current as any;
+      if (!container) return;
+
+      // iOS Safari video fallback if element fullscreen is not supported
+      if (!container.requestFullscreen && !container.webkitRequestFullscreen) {
+        if (videoRef.current && (videoRef.current as any).webkitEnterFullscreen) {
+          (videoRef.current as any).webkitEnterFullscreen();
+          return;
+        }
+      }
+
+      if (container.requestFullscreen) {
+        container.requestFullscreen().catch(() => {});
+      } else if (container.webkitRequestFullscreen) {
+        container.webkitRequestFullscreen();
+      } else if (container.mozRequestFullScreen) {
+        container.mozRequestFullScreen();
+      } else if (container.msRequestFullscreen) {
+        container.msRequestFullscreen();
+      }
+    }
+  }, [videoRef]);
+
+  // Sync fullscreen state changes
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      const doc = document as any;
+      setIsFullscreen(
+        !!(
+          doc.fullscreenElement ||
+          doc.webkitFullscreenElement ||
+          doc.mozFullScreenElement ||
+          doc.msFullscreenElement
+        )
+      );
+    };
+
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    document.addEventListener('webkitfullscreenchange', handleFullscreenChange);
+    document.addEventListener('mozfullscreenchange', handleFullscreenChange);
+    document.addEventListener('MSFullscreenChange', handleFullscreenChange);
+
+    return () => {
+      document.removeEventListener('fullscreenchange', handleFullscreenChange);
+      document.removeEventListener('webkitfullscreenchange', handleFullscreenChange);
+      document.removeEventListener('mozfullscreenchange', handleFullscreenChange);
+      document.removeEventListener('MSFullscreenChange', handleFullscreenChange);
+    };
+  }, []);
+
+  // Keyboard shortcut listener for 'f' / 'F' and message bridge from embed iframe
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Don't trigger if typing in text inputs, textareas, or contentEditable elements
+      const target = e.target as HTMLElement | null;
+      if (
+        target &&
+        (target.tagName === 'INPUT' ||
+          target.tagName === 'TEXTAREA' ||
+          target.isContentEditable ||
+          target.getAttribute('contenteditable') === 'true')
+      ) {
+        return;
+      }
+
+      if (e.key === 'f' || e.key === 'F') {
+        e.preventDefault();
+        toggleFullscreen();
+      }
+    };
+
+    const handleMessage = (e: MessageEvent) => {
+      if (e.data?.type === 'PIXUPLAY_TOGGLE_FULLSCREEN') {
+        toggleFullscreen();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('message', handleMessage);
+
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('message', handleMessage);
+    };
+  }, [toggleFullscreen]);
 
   const handleMouseMove = () => {
     setIsControlsVisible(true);
@@ -99,6 +209,7 @@ export const WatchVideoPlayer: React.FC<WatchVideoPlayerProps> = ({
 
   return (
     <div
+      ref={playerContainerRef}
       onMouseMove={handleMouseMove}
       onMouseEnter={() => setIsControlsVisible(true)}
       onMouseLeave={() => {
@@ -106,7 +217,11 @@ export const WatchVideoPlayer: React.FC<WatchVideoPlayerProps> = ({
           setIsControlsVisible(false);
         }
       }}
-      className="relative w-full aspect-video bg-black rounded-2xl overflow-hidden border border-white/5 shadow-2xl flex items-center justify-center group"
+      className={`relative w-full ${
+        isFullscreen
+          ? 'h-screen max-h-screen rounded-none border-0'
+          : 'aspect-video rounded-2xl border border-white/5'
+      } bg-black overflow-hidden shadow-2xl flex items-center justify-center group`}
     >
       {/* Floating Danmaku Emojis */}
       <div className="absolute inset-0 pointer-events-none z-20 overflow-hidden">
@@ -126,32 +241,50 @@ export const WatchVideoPlayer: React.FC<WatchVideoPlayerProps> = ({
         ))}
       </div>
 
-      {/* In-Player Settings / Quality Gear Icon */}
+      {/* In-Player Top Right Overlay Controls (Fullscreen & Quality Gear) */}
       {currentServer && !loadingStream && (
         <div
-          className={`absolute top-3.5 right-3.5 z-30 transition-opacity duration-200 ${
+          className={`absolute top-3.5 right-3.5 z-30 flex items-center gap-1.5 transition-opacity duration-200 ${
             isControlsVisible || isQualityMenuOpen
               ? 'opacity-100 pointer-events-auto'
               : 'opacity-0 pointer-events-none'
           }`}
           ref={qualityMenuRef}
         >
+          {/* Fullscreen Toggle Button */}
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              toggleFullscreen();
+            }}
+            className="p-1.5 w-8 h-8 flex items-center justify-center bg-black/40 hover:bg-black/70 border border-white/10 rounded-full active:scale-95 transition-all cursor-pointer group/fs focus:outline-none"
+            title={isFullscreen ? 'Keluar Layar Penuh (f)' : 'Layar Penuh (f)'}
+            aria-label="Layar Penuh"
+          >
+            {isFullscreen ? (
+              <Minimize className="w-4 h-4 text-white drop-shadow-md group-hover/fs:scale-110 transition-transform" />
+            ) : (
+              <Maximize className="w-4 h-4 text-white drop-shadow-md group-hover/fs:scale-110 transition-transform" />
+            )}
+          </button>
+
+          {/* Quality Settings Button */}
           <button
             onClick={(e) => {
               e.stopPropagation();
               setIsQualityMenuOpen(!isQualityMenuOpen);
             }}
-            className="relative p-1.5 w-8 h-8 flex items-center justify-center bg-transparent hover:bg-black/40 rounded-full active:scale-95 transition-all cursor-pointer group/gear focus:outline-none"
+            className="relative p-1.5 w-8 h-8 flex items-center justify-center bg-black/40 hover:bg-black/70 border border-white/10 rounded-full active:scale-95 transition-all cursor-pointer group/gear focus:outline-none"
             title="Setelan Kualitas Video"
             aria-label="Pengaturan Kualitas"
           >
             <Settings
-              className={`w-5 h-5 text-white drop-shadow-md group-hover/gear:rotate-45 transition-all duration-300 ${
+              className={`w-4 h-4 text-white drop-shadow-md group-hover/gear:rotate-45 transition-all duration-300 ${
                 isQualityMenuOpen ? 'rotate-45 text-red-400 opacity-100' : 'opacity-85 group-hover/gear:opacity-100'
               }`}
             />
             {qualityBadge && (
-              <span className="absolute top-0 right-0 text-[7px] font-black bg-[#cc0000] text-white px-0.5 py-0 rounded-[2px] leading-none shadow-md tracking-tighter uppercase select-none pointer-events-none">
+              <span className="absolute -top-1 -right-1 text-[7px] font-black bg-[#cc0000] text-white px-0.5 py-0 rounded-[2px] leading-none shadow-md tracking-tighter uppercase select-none pointer-events-none">
                 {qualityBadge}
               </span>
             )}
@@ -283,7 +416,7 @@ export const WatchVideoPlayer: React.FC<WatchVideoPlayerProps> = ({
             src={getEmbedUrl(currentServer)}
             title={`Pixuplay Cinema - ${title} Ep ${episode}`}
             allowFullScreen
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; fullscreen"
             className="w-full h-full border-0"
           />
         )

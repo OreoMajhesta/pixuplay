@@ -110,6 +110,16 @@ export async function handleEmbedProxy(req: Request, clientIp: string): Promise<
         return origFetch.apply(this, arguments);
       };
     }
+    // Forward keyboard shortcut 'f' to parent window for fullscreen toggle
+    window.addEventListener("keydown", function(e) {
+      if (e.key === "f" || e.key === "F") {
+        try {
+          if (window.parent && window.parent !== window) {
+            window.parent.postMessage({ type: "PIXUPLAY_TOGGLE_FULLSCREEN" }, "*");
+          }
+        } catch(err) {}
+      }
+    });
   } catch(e) {}
 })();
 </script>`;
