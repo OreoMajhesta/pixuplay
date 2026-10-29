@@ -72,8 +72,23 @@ export const WatchVideoPlayer: React.FC<WatchVideoPlayerProps> = ({
   const [isQualityMenuOpen, setIsQualityMenuOpen] = useState<boolean>(false);
   const [isFullscreen, setIsFullscreen] = useState<boolean>(false);
   const playerContainerRef = useRef<HTMLDivElement>(null);
+  const iframeRef = useRef<HTMLIFrameElement>(null);
   const controlsTimeoutRef = useRef<any>(null);
   const qualityMenuRef = useRef<HTMLDivElement>(null);
+
+  const togglePlayPause = useCallback(() => {
+    if (currentServer?.type === 'direct' && videoRef.current) {
+      if (videoRef.current.paused) {
+        videoRef.current.play().catch(() => {});
+      } else {
+        videoRef.current.pause();
+      }
+    } else if (iframeRef.current?.contentWindow) {
+      try {
+        iframeRef.current.contentWindow.postMessage({ type: 'PIXUPLAY_TOGGLE_PLAY' }, '*');
+      } catch {}
+    }
+  }, [currentServer, videoRef]);
 
   const toggleFullscreen = useCallback(() => {
     const doc = document as any;
@@ -145,15 +160,18 @@ export const WatchVideoPlayer: React.FC<WatchVideoPlayerProps> = ({
     };
   }, []);
 
-  // Keyboard shortcut listener for 'f' / 'F' and message bridge from embed iframe
+  // Keyboard shortcut listener for 'f' / 'F' (fullscreen), 'Space' (play/pause), and message bridge from embed iframe
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Don't trigger if typing in text inputs, textareas, or contentEditable elements
-      const target = e.target as HTMLElement | null;
+      if (e.ctrlKey || e.metaKey || e.altKey) return;
+
+      // Don't trigger if typing in text inputs, textareas, selects, or contentEditable elements
+      const target = (e.target as HTMLElement | null) || (document.activeElement as HTMLElement | null);
       if (
         target &&
         (target.tagName === 'INPUT' ||
           target.tagName === 'TEXTAREA' ||
+          target.tagName === 'SELECT' ||
           target.isContentEditable ||
           target.getAttribute('contenteditable') === 'true')
       ) {
@@ -162,24 +180,35 @@ export const WatchVideoPlayer: React.FC<WatchVideoPlayerProps> = ({
 
       if (e.key === 'f' || e.key === 'F') {
         e.preventDefault();
-        toggleFullscreen();
+        e.stopPropagation();
+        if (!e.repeat) {
+          toggleFullscreen();
+        }
+      } else if (e.code === 'Space' || e.key === ' ') {
+        e.preventDefault();
+        e.stopPropagation();
+        if (!e.repeat) {
+          togglePlayPause();
+        }
       }
     };
 
     const handleMessage = (e: MessageEvent) => {
       if (e.data?.type === 'PIXUPLAY_TOGGLE_FULLSCREEN') {
         toggleFullscreen();
+      } else if (e.data?.type === 'PIXUPLAY_TOGGLE_PLAY') {
+        togglePlayPause();
       }
     };
 
-    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('keydown', handleKeyDown, true);
     window.addEventListener('message', handleMessage);
 
     return () => {
-      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('keydown', handleKeyDown, true);
       window.removeEventListener('message', handleMessage);
     };
-  }, [toggleFullscreen]);
+  }, [toggleFullscreen, togglePlayPause]);
 
   const handleMouseMove = () => {
     setIsControlsVisible(true);
@@ -412,8 +441,14 @@ export const WatchVideoPlayer: React.FC<WatchVideoPlayerProps> = ({
           </div>
         ) : (
           <iframe
+            ref={iframeRef}
             key={`embed-${currentServer.url}-${episode}`}
-            src={getEmbedUrl(currentServer)}
+            src={(() => {
+              const raw = getEmbedUrl(currentServer);
+              return raw.includes('/api/pixuplay/embed-proxy')
+                ? `${raw}${raw.includes('?') ? '&' : '?'}v=3`
+                : raw;
+            })()}
             title={`Pixuplay Cinema - ${title} Ep ${episode}`}
             allowFullScreen
             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; fullscreen"

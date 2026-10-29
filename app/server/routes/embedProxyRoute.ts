@@ -82,20 +82,29 @@ export async function handleEmbedProxy(req: Request, clientIp: string): Promise<
     html = html.replace(/<script[^>]*data-cf-beacon[^>]*>[\s\S]*?<\/script>/gi, "");
     html = html.replace(/<script[^>]*cdn-cgi\/rum[^>]*>[\s\S]*?<\/script>/gi, "");
 
-    // 4. Client-side XHR & Fetch telemetry interceptor stub (properly opens XHR to prevent InvalidStateError on setRequestHeader)
+    // 4. Client-side XHR, Fetch & sendBeacon telemetry interceptor stub + keyboard shortcuts bridge
     const rumInterceptor = `<script>
 (function(){
   try {
+    function isTelemetryUrl(u) {
+      var s = typeof u === "string" ? u : (u && u.href ? u.href : String(u || ""));
+      return s.indexOf("/cdn-cgi/rum") !== -1 || s.indexOf("cloudflareinsights") !== -1 || s.indexOf("beacon.min.js") !== -1;
+    }
     var origOpen = XMLHttpRequest.prototype.open;
     var origSend = XMLHttpRequest.prototype.send;
+    var origSetHeader = XMLHttpRequest.prototype.setRequestHeader;
     XMLHttpRequest.prototype.open = function(m, u) {
       try {
-        if (typeof u === "string" && (u.indexOf("/cdn-cgi/rum") !== -1 || u.indexOf("cloudflareinsights") !== -1)) {
+        if (isTelemetryUrl(u)) {
           this._isRum = true;
           return origOpen.call(this, "GET", "data:text/plain,", true);
         }
       } catch(e) {}
       return origOpen.apply(this, arguments);
+    };
+    XMLHttpRequest.prototype.setRequestHeader = function() {
+      if (this._isRum) return;
+      return origSetHeader.apply(this, arguments);
     };
     XMLHttpRequest.prototype.send = function() {
       if (this._isRum) return;
@@ -104,20 +113,70 @@ export async function handleEmbedProxy(req: Request, clientIp: string): Promise<
     if (window.fetch) {
       var origFetch = window.fetch;
       window.fetch = function(u, p) {
-        if (typeof u === "string" && (u.indexOf("/cdn-cgi/rum") !== -1 || u.indexOf("cloudflareinsights") !== -1)) {
-          return Promise.resolve(new Response(""));
+        if (isTelemetryUrl(u) || (u && typeof u === "object" && isTelemetryUrl(u.url))) {
+          return Promise.resolve(new Response("", { status: 200 }));
         }
         return origFetch.apply(this, arguments);
       };
     }
-    // Forward keyboard shortcut 'f' to parent window for fullscreen toggle
-    window.addEventListener("keydown", function(e) {
-      if (e.key === "f" || e.key === "F") {
-        try {
-          if (window.parent && window.parent !== window) {
-            window.parent.postMessage({ type: "PIXUPLAY_TOGGLE_FULLSCREEN" }, "*");
+    if (typeof navigator !== "undefined" && navigator.sendBeacon) {
+      var origBeacon = navigator.sendBeacon.bind(navigator);
+      navigator.sendBeacon = function(u, d) {
+        if (isTelemetryUrl(u)) {
+          return true;
+        }
+        return origBeacon(u, d);
+      };
+    }
+
+    function toggleIframePlay() {
+      try {
+        var v = document.querySelector("video");
+        if (v) {
+          if (v.paused) {
+            v.play().catch(function(){});
+          } else {
+            v.pause();
           }
-        } catch(err) {}
+          return;
+        }
+        if (window.playerjs && typeof window.playerjs.api === "function") {
+          window.playerjs.api("toggle");
+          return;
+        }
+      } catch(err) {}
+    }
+
+    // Handle keyboard shortcuts 'f' (fullscreen) and 'Space' (play/pause) inside iframe
+    window.addEventListener("keydown", function(e) {
+      if (e.ctrlKey || e.metaKey || e.altKey) return;
+      var t = e.target || document.activeElement;
+      if (t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.tagName === "SELECT" || t.isContentEditable)) {
+        return;
+      }
+      if (e.key === "f" || e.key === "F") {
+        e.preventDefault();
+        e.stopPropagation();
+        if (typeof e.stopImmediatePropagation === "function") e.stopImmediatePropagation();
+        if (!e.repeat && window.parent && window.parent !== window) {
+          try {
+            window.parent.postMessage({ type: "PIXUPLAY_TOGGLE_FULLSCREEN" }, "*");
+          } catch(err) {}
+        }
+      } else if (e.code === "Space" || e.key === " ") {
+        e.preventDefault();
+        e.stopPropagation();
+        if (typeof e.stopImmediatePropagation === "function") e.stopImmediatePropagation();
+        if (!e.repeat) {
+          toggleIframePlay();
+        }
+      }
+    }, true);
+
+    // Listen for play/pause command from parent window
+    window.addEventListener("message", function(e) {
+      if (e.data && e.data.type === "PIXUPLAY_TOGGLE_PLAY") {
+        toggleIframePlay();
       }
     });
   } catch(e) {}
@@ -137,7 +196,7 @@ export async function handleEmbedProxy(req: Request, clientIp: string): Promise<
         "Access-Control-Allow-Origin": "*",
         ...globalSecurityHeaders,
         "Content-Type": "text/html; charset=utf-8",
-        "Cache-Control": "public, max-age=3600",
+        "Cache-Control": "no-store, no-cache, must-revalidate",
       },
     });
   } catch (err: any) {
