@@ -1,15 +1,16 @@
 import React, { useRef } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
-import { Anime } from '../types';
+import { Anime, HistoryItem } from '../types';
 import { AnimeCard } from './AnimeCard';
 
 interface AnimeRowProps {
   title: string;
   items: Anime[];
   onSelectAnime: (anime: Anime) => void;
-  onQuickPlay: (anime: Anime) => void;
+  onQuickPlay: (anime: Anime, ep?: number, resumeTime?: number) => void;
   onSeeAll?: () => void;
   showRank?: boolean;
+  history?: HistoryItem[];
 }
 
 export const AnimeRow: React.FC<AnimeRowProps> = ({
@@ -19,6 +20,7 @@ export const AnimeRow: React.FC<AnimeRowProps> = ({
   onQuickPlay,
   onSeeAll,
   showRank = false,
+  history,
 }) => {
   const rowRef = useRef<HTMLDivElement>(null);
 
@@ -76,6 +78,7 @@ export const AnimeRow: React.FC<AnimeRowProps> = ({
                 rank={showRank ? idx + 1 : undefined}
                 onSelect={onSelectAnime}
                 onQuickPlay={onQuickPlay}
+                history={history}
               />
             </div>
           ))}

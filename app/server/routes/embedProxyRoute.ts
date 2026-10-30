@@ -173,10 +173,97 @@ export async function handleEmbedProxy(req: Request, clientIp: string): Promise<
       }
     }, true);
 
-    // Listen for play/pause command from parent window
+    // Listen for play/pause or seek command from parent window
+    var lastReportedTime = -1;
+    var pendingSeekTime = 0;
+    var hasSeekedInitial = false;
+
+    function reportVideoState(v, force) {
+      if (!v || typeof v.currentTime !== "number" || isNaN(v.currentTime)) return;
+      var cur = Math.floor(v.currentTime);
+      var dur = (typeof v.duration === "number" && !isNaN(v.duration) && isFinite(v.duration) && v.duration > 0)
+        ? Math.floor(v.duration)
+        : 1440;
+      if (!force && Math.abs(cur - lastReportedTime) < 3) return;
+      lastReportedTime = cur;
+      if (window.parent && window.parent !== window) {
+        try {
+          window.parent.postMessage({
+            type: "PIXUPLAY_TIME_UPDATE",
+            currentTime: cur,
+            duration: dur,
+            paused: !!v.paused
+          }, "*");
+        } catch(err) {}
+      }
+    }
+
+    function tryApplyPendingSeek(v) {
+      if (!v || hasSeekedInitial || pendingSeekTime <= 0) return;
+      try {
+        if (v.readyState >= 1) {
+          v.currentTime = pendingSeekTime;
+          hasSeekedInitial = true;
+        }
+      } catch(err) {}
+    }
+
+    document.addEventListener("loadedmetadata", function(e) {
+      var v = e.target;
+      if (v && v.tagName === "VIDEO") {
+        tryApplyPendingSeek(v);
+        reportVideoState(v, true);
+      }
+    }, true);
+
+    document.addEventListener("canplay", function(e) {
+      var v = e.target;
+      if (v && v.tagName === "VIDEO") {
+        tryApplyPendingSeek(v);
+      }
+    }, true);
+
+    document.addEventListener("timeupdate", function(e) {
+      var v = e.target;
+      if (v && v.tagName === "VIDEO") {
+        tryApplyPendingSeek(v);
+        reportVideoState(v, false);
+      }
+    }, true);
+
+    document.addEventListener("pause", function(e) {
+      var v = e.target;
+      if (v && v.tagName === "VIDEO") {
+        reportVideoState(v, true);
+      }
+    }, true);
+
+    document.addEventListener("seeked", function(e) {
+      var v = e.target;
+      if (v && v.tagName === "VIDEO") {
+        reportVideoState(v, true);
+      }
+    }, true);
+
     window.addEventListener("message", function(e) {
-      if (e.data && e.data.type === "PIXUPLAY_TOGGLE_PLAY") {
+      if (!e.data) return;
+      if (e.data.type === "PIXUPLAY_TOGGLE_PLAY") {
         toggleIframePlay();
+      } else if (e.data.type === "PIXUPLAY_SEEK_TO" && typeof e.data.time === "number" && e.data.time > 0) {
+        pendingSeekTime = e.data.time;
+        hasSeekedInitial = false;
+        var v = document.querySelector("video");
+        if (v) {
+          tryApplyPendingSeek(v);
+        }
+      }
+    });
+
+    window.addEventListener("load", function() {
+      if (window.parent && window.parent !== window) {
+        try {
+          window.parent.postMessage({ type: "PIXUPLAY_IFRAME_READY" }, "*");
+        } catch(err) {}
       }
     });
   } catch(e) {}

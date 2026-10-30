@@ -38,6 +38,8 @@ interface WatchVideoPlayerProps {
   selectedQuality: string;
   onSelectQuality: (qualityKey: string, label: string) => void;
   qualityBadge: 'FHD' | 'HD' | 'SD' | null;
+  initialResumeTime?: number;
+  onEmbedTimeUpdate?: (currentTime: number, duration: number, paused: boolean) => void;
 }
 
 export const WatchVideoPlayer: React.FC<WatchVideoPlayerProps> = ({
@@ -67,6 +69,8 @@ export const WatchVideoPlayer: React.FC<WatchVideoPlayerProps> = ({
   selectedQuality,
   onSelectQuality,
   qualityBadge,
+  initialResumeTime = 0,
+  onEmbedTimeUpdate,
 }) => {
   const [isControlsVisible, setIsControlsVisible] = useState<boolean>(true);
   const [isQualityMenuOpen, setIsQualityMenuOpen] = useState<boolean>(false);
@@ -198,6 +202,23 @@ export const WatchVideoPlayer: React.FC<WatchVideoPlayerProps> = ({
         toggleFullscreen();
       } else if (e.data?.type === 'PIXUPLAY_TOGGLE_PLAY') {
         togglePlayPause();
+      } else if (e.data?.type === 'PIXUPLAY_TIME_UPDATE') {
+        if (typeof e.data.currentTime === 'number') {
+          onEmbedTimeUpdate?.(
+            e.data.currentTime,
+            typeof e.data.duration === 'number' && e.data.duration > 0 ? e.data.duration : 1440,
+            Boolean(e.data.paused)
+          );
+        }
+      } else if (e.data?.type === 'PIXUPLAY_IFRAME_READY') {
+        if (initialResumeTime && initialResumeTime > 0 && iframeRef.current?.contentWindow) {
+          try {
+            iframeRef.current.contentWindow.postMessage(
+              { type: 'PIXUPLAY_SEEK_TO', time: initialResumeTime },
+              '*'
+            );
+          } catch {}
+        }
       }
     };
 
@@ -208,7 +229,7 @@ export const WatchVideoPlayer: React.FC<WatchVideoPlayerProps> = ({
       window.removeEventListener('keydown', handleKeyDown, true);
       window.removeEventListener('message', handleMessage);
     };
-  }, [toggleFullscreen, togglePlayPause]);
+  }, [toggleFullscreen, togglePlayPause, onEmbedTimeUpdate, initialResumeTime]);
 
   const handleMouseMove = () => {
     setIsControlsVisible(true);
@@ -446,9 +467,19 @@ export const WatchVideoPlayer: React.FC<WatchVideoPlayerProps> = ({
             src={(() => {
               const raw = getEmbedUrl(currentServer);
               return raw.includes('/api/pixuplay/embed-proxy')
-                ? `${raw}${raw.includes('?') ? '&' : '?'}v=3`
+                ? `${raw}${raw.includes('?') ? '&' : '?'}v=4`
                 : raw;
             })()}
+            onLoad={() => {
+              if (initialResumeTime && initialResumeTime > 0 && iframeRef.current?.contentWindow) {
+                try {
+                  iframeRef.current.contentWindow.postMessage(
+                    { type: 'PIXUPLAY_SEEK_TO', time: initialResumeTime },
+                    '*'
+                  );
+                } catch {}
+              }
+            }}
             title={`Pixuplay Cinema - ${title} Ep ${episode}`}
             allowFullScreen
             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; fullscreen"

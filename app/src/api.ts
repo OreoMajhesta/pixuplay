@@ -1,4 +1,4 @@
-import { Anime, ScheduleDay, StreamData, CommentItem, EpisodeInteractions } from './types';
+import { Anime, ScheduleDay, StreamData, CommentItem, EpisodeInteractions, HistoryItem } from './types';
 
 export function getOrCreateGuestName(): string {
   try {
@@ -143,6 +143,31 @@ export function getAnimePoster(anime?: Anime | null): string {
     anime.coverImage?.medium ||
     'https://images.unsplash.com/photo-1578632767115-351597cf2477?w=500&auto=format&fit=crop&q=80'
   );
+}
+
+export function formatWatchTime(sec?: number): string {
+  if (!sec || isNaN(sec) || sec <= 0) return '00:00';
+  const totalSec = Math.floor(sec);
+  const h = Math.floor(totalSec / 3600);
+  const m = Math.floor((totalSec % 3600) / 60);
+  const s = totalSec % 60;
+  if (h > 0) {
+    return `${h}:${m < 10 ? '0' : ''}${m}:${s < 10 ? '0' : ''}${s}`;
+  }
+  return `${m < 10 ? '0' : ''}${m}:${s < 10 ? '0' : ''}${s}`;
+}
+
+export function getAnimeHistoryItems(anime: Anime | null | undefined, history?: HistoryItem[]): HistoryItem[] {
+  if (!anime || !history || history.length === 0) return [];
+  const animeKey = String(anime.animeId || anime.id || '').trim().toLowerCase();
+  const animeTitleNorm = getAnimeTitle(anime).trim().toLowerCase();
+
+  return history.filter((h) => {
+    const hKey = String(h.animeId || h.id || '').trim().toLowerCase();
+    if (animeKey && hKey && hKey === animeKey) return true;
+    const hTitle = formatTitle(h.title).trim().toLowerCase();
+    return Boolean(animeTitleNorm && hTitle && hTitle === animeTitleNorm);
+  });
 }
 
 export async function getInteractions(

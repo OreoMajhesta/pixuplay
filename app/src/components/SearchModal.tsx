@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Search, X, Loader2 } from 'lucide-react';
-import { Anime } from '../types';
+import { Anime, HistoryItem } from '../types';
 import { searchAnime } from '../api';
 import { AnimeCard } from './AnimeCard';
 import { useDebounce } from '../hooks/useDebounce';
@@ -9,7 +9,8 @@ interface SearchModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSelectAnime: (anime: Anime) => void;
-  onQuickPlay: (anime: Anime) => void;
+  onQuickPlay: (anime: Anime, ep?: number, resumeTime?: number) => void;
+  history?: HistoryItem[];
 }
 
 export const SearchModal: React.FC<SearchModalProps> = ({
@@ -17,6 +18,7 @@ export const SearchModal: React.FC<SearchModalProps> = ({
   onClose,
   onSelectAnime,
   onQuickPlay,
+  history,
 }) => {
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<Anime[]>([]);
@@ -106,13 +108,14 @@ export const SearchModal: React.FC<SearchModalProps> = ({
                   <AnimeCard
                     key={anime.id || anime.animeId}
                     anime={anime}
+                    history={history}
                     onSelect={(a) => {
                       onClose();
                       onSelectAnime(a);
                     }}
-                    onQuickPlay={(a) => {
+                    onQuickPlay={(a, ep, resumeTime) => {
                       onClose();
-                      onQuickPlay(a);
+                      onQuickPlay(a, ep, resumeTime);
                     }}
                   />
                 ))}

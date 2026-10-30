@@ -1,13 +1,15 @@
 import React from 'react';
-import { Play } from 'lucide-react';
-import { Anime } from '../types';
-import { getAnimeTitle, getAnimePoster } from '../api';
+import { Play, Clock } from 'lucide-react';
+import { Anime, HistoryItem } from '../types';
+import { getAnimeTitle, getAnimePoster, formatWatchTime, getAnimeHistoryItems } from '../api';
 
 interface AnimeCardProps {
   anime: Anime;
   onSelect: (anime: Anime) => void;
-  onQuickPlay: (anime: Anime) => void;
+  onQuickPlay: (anime: Anime, ep?: number, resumeTime?: number) => void;
   rank?: number;
+  history?: HistoryItem[];
+  historyItem?: HistoryItem | null;
 }
 
 export const AnimeCard = React.memo<AnimeCardProps>(({
@@ -15,9 +17,25 @@ export const AnimeCard = React.memo<AnimeCardProps>(({
   onSelect,
   onQuickPlay,
   rank,
+  history,
+  historyItem,
 }) => {
   const title = getAnimeTitle(anime);
   const poster = getAnimePoster(anime);
+
+  const latestHistory = React.useMemo(() => {
+    if (historyItem) return historyItem;
+    if (!history || history.length === 0) return null;
+    const matched = getAnimeHistoryItems(anime, history);
+    return matched[0] || null;
+  }, [anime, history, historyItem]);
+
+  const hasWatchedTime = Boolean(latestHistory?.currentTime && latestHistory.currentTime > 0);
+  const watchDuration = latestHistory?.duration && latestHistory.duration > 0 ? latestHistory.duration : 1440;
+  const watchPercent = latestHistory
+    ? latestHistory.progressPercent ??
+      (hasWatchedTime ? Math.min(100, Math.round(((latestHistory.currentTime || 0) / watchDuration) * 100)) : 10)
+    : 0;
 
   // Accurate Ongoing vs Finished check
   const isOngoing = anime.status === 'RELEASING' ||
@@ -56,10 +74,18 @@ export const AnimeCard = React.memo<AnimeCardProps>(({
           <button
             onClick={(e) => {
               e.stopPropagation();
-              onQuickPlay(anime);
+              if (latestHistory) {
+                onQuickPlay(anime, latestHistory.ep, latestHistory.currentTime || 0);
+              } else {
+                onQuickPlay(anime, 1, 0);
+              }
             }}
             className="w-12 h-12 rounded-full bg-white text-black flex items-center justify-center transform scale-90 group-hover/card:scale-100 transition-transform shadow-lg cursor-pointer"
-            title="Putar Sekarang"
+            title={
+              latestHistory
+                ? `Lanjut Episode ${latestHistory.ep}${hasWatchedTime ? ` (${formatWatchTime(latestHistory.currentTime)})` : ''}`
+                : 'Putar Sekarang'
+            }
             aria-label="Putar"
           >
             <Play className="w-5 h-5 fill-black ml-0.5" />
@@ -79,13 +105,35 @@ export const AnimeCard = React.memo<AnimeCardProps>(({
           )}
         </div>
 
-        <div className="absolute bottom-2 right-2">
+        {latestHistory && (
+          <div className="absolute bottom-2.5 left-2 max-w-[65%]">
+            <span className="inline-flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 bg-red-600/95 text-white rounded-xs shadow truncate">
+              <Clock className="w-2.5 h-2.5 flex-shrink-0" />
+              <span className="truncate">
+                Ep {latestHistory.ep}
+                {hasWatchedTime ? ` • ${formatWatchTime(latestHistory.currentTime)}` : ''}
+              </span>
+            </span>
+          </div>
+        )}
+
+        <div className="absolute bottom-2.5 right-2">
           <span className={`text-[10px] font-bold px-1.5 py-0.5 border border-subtle rounded-xs ${
             isOngoing ? 'bg-black/90 text-amber-400' : 'bg-black/90 text-white'
           }`}>
             {epBadgeText}
           </span>
         </div>
+
+        {/* Watch Progress Bar at bottom of poster */}
+        {latestHistory && (
+          <div className="absolute bottom-0 left-0 right-0 h-1 bg-black/80">
+            <div
+              className="h-full bg-red-500 transition-all"
+              style={{ width: `${Math.max(8, watchPercent)}%` }}
+            />
+          </div>
+        )}
       </div>
 
       {/* Card Info */}
@@ -104,7 +152,9 @@ export const AnimeCard = React.memo<AnimeCardProps>(({
         </h3>
 
         <p className="text-[11px] text-neutral-300 truncate font-medium">
-          {genres}
+          {latestHistory
+            ? `Terakhir: Ep ${latestHistory.ep}${hasWatchedTime ? ` • Menit ${formatWatchTime(latestHistory.currentTime)}` : ''}`
+            : genres}
         </p>
       </div>
     </article>

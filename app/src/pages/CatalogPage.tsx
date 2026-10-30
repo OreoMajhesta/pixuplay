@@ -1,14 +1,15 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { Film, Filter, Search, Sparkles, Loader2 } from 'lucide-react';
-import { Anime } from '../types';
+import { Anime, HistoryItem } from '../types';
 import { AnimeCard } from '../components/AnimeCard';
 import { getAnimeTitle, getAnimeByGenre } from '../api';
 import { useDebounce } from '../hooks/useDebounce';
 
 interface CatalogPageProps {
   animeList: Anime[];
+  history?: HistoryItem[];
   onSelectAnime: (anime: Anime) => void;
-  onQuickPlay: (anime: Anime, ep?: number) => void;
+  onQuickPlay: (anime: Anime, ep?: number, resumeTime?: number) => void;
   initialStatus?: string;
   initialGenre?: string;
   initialSortBy?: string;
@@ -63,6 +64,7 @@ const SORT_OPTIONS = [
 
 export const CatalogPage: React.FC<CatalogPageProps> = ({
   animeList,
+  history,
   onSelectAnime,
   onQuickPlay,
   initialStatus = 'all',
@@ -283,8 +285,9 @@ export const CatalogPage: React.FC<CatalogPageProps> = ({
             <AnimeCard
               key={anime.animeId || anime.id}
               anime={anime}
+              history={history}
               onSelect={onSelectAnime}
-              onQuickPlay={(a) => onQuickPlay(a, 1)}
+              onQuickPlay={(a, ep, resumeTime) => onQuickPlay(a, ep ?? 1, resumeTime)}
             />
           ))}
         </div>

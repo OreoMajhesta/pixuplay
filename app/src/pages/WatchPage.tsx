@@ -16,6 +16,7 @@ import {
   StreamData,
   CommentItem,
   SavedItem,
+  HistoryItem,
   UserProfile,
 } from '../types';
 import {
@@ -28,6 +29,7 @@ import {
   postComment,
   deleteComment,
   getOrCreateUserId,
+  getAnimeHistoryItems,
 } from '../api';
 import {
   createNobarRoom,
@@ -52,12 +54,13 @@ interface WatchPageProps {
   initialNobarRoomId?: string | null;
   initialResumeTime?: number;
   initialIsPlaying?: boolean;
+  history?: HistoryItem[];
   watchlist: SavedItem[];
   favorites: SavedItem[];
   allAnimeList?: Anime[];
   currentUser?: UserProfile | null;
   onOpenLogin?: () => void;
-  onSelectEpisode: (ep: number) => void;
+  onSelectEpisode: (ep: number, resumeTime?: number) => void;
   onSelectAnime: (anime: Anime, isNobarSync?: boolean) => void;
   onToggleWatchlist: (anime: Anime) => void;
   onToggleFavorite: (anime: Anime) => void;
@@ -75,6 +78,7 @@ export const WatchPage: React.FC<WatchPageProps> = ({
   initialNobarRoomId,
   initialResumeTime = 0,
   initialIsPlaying = true,
+  history = [],
   watchlist,
   favorites,
   allAnimeList = [],
@@ -369,6 +373,7 @@ export const WatchPage: React.FC<WatchPageProps> = ({
 
     if (targetSeekTimeRef.current > 0 && !hasAppliedInitialSeekRef.current && cur === 0) return;
 
+    lastRealTimeUpdateAtRef.current = Date.now();
     onPlaybackSync?.(cur, !video.paused);
     if (dur > 0 && Math.abs(cur - lastSavedTimeRef.current) >= 4) {
       lastSavedTimeRef.current = cur;
@@ -411,6 +416,47 @@ export const WatchPage: React.FC<WatchPageProps> = ({
       }
     }
   };
+
+  const lastRealTimeUpdateAtRef = useRef<number>(0);
+
+  const handleEmbedTimeUpdate = (curTime: number, durTime: number, isPaused: boolean) => {
+    const cur = Math.floor(curTime);
+    const dur = durTime > 0 ? Math.floor(durTime) : 1440;
+    lastRealTimeUpdateAtRef.current = Date.now();
+    lastSavedTimeRef.current = cur;
+    onPlaybackSync?.(cur, !isPaused);
+    onSaveHistory(detailedAnime, episode, cur, dur);
+  };
+
+  // Fallback timer for cross-origin embed servers where native <video> events cannot be accessed
+  useEffect(() => {
+    if (loadingStream || !currentServer || currentServer.type === 'direct') return;
+    // Immediately record episode start in history
+    onSaveHistory(
+      detailedAnime,
+      episode,
+      lastSavedTimeRef.current > 0 ? lastSavedTimeRef.current : undefined,
+      1440
+    );
+
+    const interval = setInterval(() => {
+      if (document.visibilityState !== 'visible') return;
+      // Only increment fallback timer if no real postMessage timeupdate arrived in the last 6 seconds
+      if (Date.now() - lastRealTimeUpdateAtRef.current > 6000) {
+        const nextSec = Math.min(1440, (lastSavedTimeRef.current || 0) + 5);
+        lastSavedTimeRef.current = nextSec;
+        onPlaybackSync?.(nextSec, true);
+        onSaveHistory(detailedAnime, episode, nextSec, 1440);
+      }
+    }, 5000);
+
+    return () => clearInterval(interval);
+  }, [loadingStream, currentServer, detailedAnime, episode]);
+
+  const animeHistory = useMemo(
+    () => getAnimeHistoryItems(detailedAnime, history),
+    [detailedAnime, history]
+  );
 
   // PiP handler
   const handleTogglePiP = async () => {
@@ -734,6 +780,8 @@ export const WatchPage: React.FC<WatchPageProps> = ({
               } catch {}
             }}
             qualityBadge={qualityBadge}
+            initialResumeTime={initialResumeTime}
+            onEmbedTimeUpdate={handleEmbedTimeUpdate}
           />
 
           <WatchMetadata
@@ -774,6 +822,7 @@ export const WatchPage: React.FC<WatchPageProps> = ({
           <WatchEpisodeList
             episode={episode}
             maxEpisode={maxEpisode}
+            animeHistory={animeHistory}
             onSelectEpisode={onSelectEpisode}
           />
 

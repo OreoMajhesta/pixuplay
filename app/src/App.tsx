@@ -479,12 +479,27 @@ export const App: React.FC = () => {
       handleNobarRoomChange(null);
     }
 
+    const animeKey = String(anime.animeId || anime.id);
+    const existingEpHistory = historyRef.current.find(
+      (h) => String(h.animeId || h.id) === animeKey && h.ep === validEp
+    );
+    const effectiveResumeTime =
+      resumeTime > 0 ? resumeTime : existingEpHistory?.currentTime || 0;
+
     setPlayingAnime(anime);
     setPlayingEpisode(validEp);
-    setInitialResumeTime(resumeTime);
+    setInitialResumeTime(effectiveResumeTime);
+    initialResumeTimeRef.current = effectiveResumeTime;
     setPlaybackIsPlaying(true);
     setIsPlayerOpen(true);
     setIsMinimized(false);
+    // Record immediately in watch history so episode & timestamp are up to date
+    handleSaveHistory(
+      anime,
+      validEp,
+      effectiveResumeTime > 0 ? effectiveResumeTime : undefined,
+      existingEpHistory?.duration || 1440
+    );
     // Automatically close detail modal when playback starts
     setSelectedDetailAnime(null);
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -656,10 +671,22 @@ export const App: React.FC = () => {
 
     setHistory((prev) => {
       const existing = prev.find((x) => String(x.id) === String(id) && x.ep === ep);
-      const finalCurrentTime = currentTime !== undefined ? currentTime : existing?.currentTime;
-      const finalDuration = duration !== undefined ? duration : existing?.duration;
+      const finalCurrentTime =
+        currentTime !== undefined && currentTime > 0
+          ? currentTime
+          : existing?.currentTime !== undefined && existing.currentTime > 0
+          ? existing.currentTime
+          : currentTime;
+      const finalDuration =
+        duration !== undefined && duration > 0 && (duration !== 1440 || !existing?.duration)
+          ? duration
+          : existing?.duration || duration || 1440;
       const finalProgressPercent =
-        progressPercent !== undefined ? progressPercent : existing?.progressPercent;
+        finalCurrentTime !== undefined && finalCurrentTime > 0 && finalDuration && finalDuration > 0
+          ? Math.min(100, Math.round((finalCurrentTime / finalDuration) * 100))
+          : progressPercent !== undefined
+          ? progressPercent
+          : existing?.progressPercent;
 
       const newItem: HistoryItem = {
         id,
@@ -813,6 +840,7 @@ export const App: React.FC = () => {
               initialResumeTime={initialResumeTime}
               initialIsPlaying={playbackIsPlaying}
               initialNobarRoomId={activeNobarRoomId}
+              history={history}
               watchlist={watchlist}
               favorites={favorites}
               allAnimeList={catalogList}
@@ -823,9 +851,23 @@ export const App: React.FC = () => {
               }}
               onBackToHome={handleClosePlayer}
               onMinimize={handleMinimizePlayer}
-              onSelectEpisode={(ep) => {
+              onSelectEpisode={(ep, resumeTime) => {
+                if (playingAnimeRef.current && playingEpisodeRef.current !== undefined) {
+                  handleSaveHistory(
+                    playingAnimeRef.current,
+                    playingEpisodeRef.current,
+                    initialResumeTimeRef.current || 0,
+                    1440
+                  );
+                }
+                const animeKey = String(playingAnime.animeId || playingAnime.id);
+                const existingEp = historyRef.current.find(
+                  (h) => String(h.animeId || h.id) === animeKey && h.ep === ep
+                );
+                const nextResume = resumeTime !== undefined ? resumeTime : existingEp?.currentTime || 0;
                 setPlayingEpisode(ep);
-                setInitialResumeTime(0);
+                setInitialResumeTime(nextResume);
+                initialResumeTimeRef.current = nextResume;
               }}
               onServerChange={setCurrentStreamServer}
               onToggleFavorite={handleToggleFavorite}
@@ -851,9 +893,12 @@ export const App: React.FC = () => {
                   shounen={shounen}
                   isekai={isekai}
                   classics={classics}
+                  history={history}
+                  allAnimeList={catalogList}
                   onSelectAnime={setSelectedDetailAnime}
                   onQuickPlay={handlePlayEpisode}
                   onToggleWatchlist={handleToggleWatchlist}
+                  onRemoveAnimeHistory={handleRemoveAnimeHistory}
                   watchlist={watchlist}
                   onNavigateTab={handleNavigateTab}
                 />
@@ -869,6 +914,7 @@ export const App: React.FC = () => {
               {activeTab === 'katalog' && (
                 <CatalogPage
                   animeList={catalogList}
+                  history={history}
                   onSelectAnime={setSelectedDetailAnime}
                   onQuickPlay={handlePlayEpisode}
                   initialStatus={catalogFilter.status}
@@ -951,6 +997,7 @@ export const App: React.FC = () => {
       {/* Anime Detail Modal */}
       <DetailModal
         anime={selectedDetailAnime}
+        history={history}
         onClose={() => setSelectedDetailAnime(null)}
         onPlayEpisode={handlePlayEpisode}
         isFavorite={isAnimeFavorite(selectedDetailAnime)}
@@ -981,14 +1028,15 @@ export const App: React.FC = () => {
       {/* Search Modal */}
       <SearchModal
         isOpen={isSearchOpen}
+        history={history}
         onClose={() => setIsSearchOpen(false)}
         onSelectAnime={(anime) => {
           setIsSearchOpen(false);
           setSelectedDetailAnime(anime);
         }}
-        onQuickPlay={(anime) => {
+        onQuickPlay={(anime, ep, resumeTime) => {
           setIsSearchOpen(false);
-          handlePlayEpisode(anime, 1);
+          handlePlayEpisode(anime, ep ?? 1, resumeTime ?? 0);
         }}
       />
 
