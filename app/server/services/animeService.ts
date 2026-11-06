@@ -355,7 +355,7 @@ export async function getAnimeDetails(animeId: string): Promise<any | null> {
       countryOfOrigin: "JP",
       episodeList: (details.episodeList || []).map((ep: any) => ({
         title: ep.episode || ep.title,
-        episodeId: ep.href?.replace(/.*\/anime\//, "").replace("https://oploverz.am/", "").replace(/\/$/, ""),
+        episodeId: ep.href?.replace(/.*\/anime\//, "").replace("https://oploverz.org/", "").replace("https://oploverz.am/", "").replace(/^\//, "").replace(/\/$/, ""),
         url: ep.href,
       })),
       source: "oploverz",

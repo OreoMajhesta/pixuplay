@@ -6,7 +6,7 @@ function extractMp4FromHtml(html: string): string | null {
   const isUsable = (u: string) => {
     if (!u) return false;
     const lower = u.toLowerCase();
-    return !lower.includes("googlevideo.com") && !lower.includes("analytics") && !lower.includes("beacon");
+    return !lower.includes("analytics") && !lower.includes("beacon");
   };
 
   let m = html.match(/const\s+videoURL\s*=\s*["']([^"']+)["']/);
@@ -243,7 +243,18 @@ export async function resolveStream(
           };
 
           if (directStreams.length > 0) {
-            const best = directStreams[0];
+            // Check if any direct stream needs server-side video proxy (e.g. googlevideo with IP binding)
+            const proxiedDirectStreams = directStreams.map((s) => {
+              if (s.url.includes("googlevideo.com") || s.url.includes("desustream")) {
+                return {
+                  ...s,
+                  url: `/api/pixuplay/video-proxy?url=${encodeURIComponent(s.url)}`,
+                };
+              }
+              return s;
+            });
+
+            const best = proxiedDirectStreams[0];
             const maxQ = best.quality;
             const maxQText = maxQ === "1080p" ? "1080p Full HD" : maxQ === "720p" ? "720p HD" : "480p SD";
 
@@ -256,7 +267,7 @@ export async function resolveStream(
               maxQualityLabel: `Maks ${maxQText}`,
               type: "direct",
               url: best.url,
-              qualities: directStreams.map((s) => ({
+              qualities: proxiedDirectStreams.map((s) => ({
                 quality: s.quality,
                 label: labelMap[s.quality] || s.quality.toUpperCase(),
                 url: s.url,
@@ -322,7 +333,7 @@ export async function resolveStream(
               }) || opEps[opEps.length - 1];
 
             if (targetOp?.href) {
-              const epSlug = targetOp.href.replace("https://oploverz.am/", "").replace(/\/$/, "");
+              const epSlug = targetOp.href.replace("https://oploverz.org/", "").replace("https://oploverz.am/", "").replace(/^\/anime\//, "").replace(/^\//, "").replace(/\/$/, "");
               const opEpRes = await fetchJson(`${WAJIK_API}/oploverz/episode/${epSlug}`, 3000);
               const streamUrl = opEpRes?.data?.details?.streamingUrl;
               if (streamUrl && !servers.some((s) => s.url === streamUrl)) {

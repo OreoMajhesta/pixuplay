@@ -8,6 +8,7 @@ import { handleAuthRoutes } from "./routes/authRoutes";
 import { handleInteractionRoutes } from "./routes/interactionRoutes";
 import { handleNobarRoutes } from "./routes/nobarRoutes";
 import { handleEmbedProxy } from "./routes/embedProxyRoute";
+import { handleVideoProxy } from "./routes/videoProxyRoute";
 import { handleStaticFile } from "./routes/staticRoutes";
 import { createNobarWebSocketHandlers, NOBAR_ROOMS, NobarRoom, NobarWebSocketData } from "./websocket/nobarWebSocket";
 import { sanitizeSlug, sanitizeText, sanitizeSafeUrl } from "./security/crypto";
@@ -81,6 +82,11 @@ serverInstance = serve<NobarWebSocketData>({
     // Embed proxy route
     if (pathname === "/api/pixuplay/embed-proxy") {
       return await handleEmbedProxy(req, clientIp);
+    }
+
+    // Video stream proxy route (bypasses 403 Forbidden / IP binding / CORS)
+    if (pathname === "/api/pixuplay/video-proxy") {
+      return await handleVideoProxy(req, clientIp);
     }
 
     // Anime catalog and scraper routes

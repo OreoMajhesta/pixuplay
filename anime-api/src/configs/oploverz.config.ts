@@ -1,5 +1,5 @@
 const oploverzConfig: IAnimeConfig = {
-  baseUrl: "https://oploverz.am",
+  baseUrl: "https://oploverz.org",
 };
 
 export default oploverzConfig;
