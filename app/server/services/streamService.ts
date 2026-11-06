@@ -21,6 +21,12 @@ function extractMp4FromHtml(html: string): string | null {
     if (isUsable(candidate)) return candidate;
   }
 
+  // Support direct googlevideo / desustream video URLs in HTML5 video tags
+  const gvideoMatch = html.match(/https?:\/\/[^"'\s<>]*googlevideo\.com\/videoplayback[^"'\s<>]*/);
+  if (gvideoMatch && isUsable(gvideoMatch[0])) {
+    return gvideoMatch[0].replace(/&amp;/g, "&");
+  }
+
   const allMp4s = html.match(/["'](https?:\/\/[^"']+\.mp4[^"']*)["']/g);
   if (allMp4s) {
     for (const raw of allMp4s) {
@@ -32,16 +38,21 @@ function extractMp4FromHtml(html: string): string | null {
   return null;
 }
 
+// In-memory fresh stream resolver cache for direct video extractions with short TTL (2 minutes)
+// This prevents GoogleVideo URL token expiration (&expire=...) while allowing smooth buffer seeks
+const EXTRACTED_DIRECT_CACHE = new Map<string, { mp4: string; ts: number }>();
+
 export async function extractDirectStream(desustreamUrl: string): Promise<string | null> {
-  if (CACHE.extractedMp4.has(desustreamUrl)) {
-    return CACHE.extractedMp4.get(desustreamUrl)!;
+  const cached = EXTRACTED_DIRECT_CACHE.get(desustreamUrl);
+  if (cached && Date.now() - cached.ts < 120 * 1000) {
+    return cached.mp4;
   }
 
   try {
     const res = await fetch(desustreamUrl, {
       headers: {
         Referer: "https://otakudesu.blog/",
-        "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko)",
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
       },
       signal: AbortSignal.timeout(6000),
     });
@@ -49,7 +60,7 @@ export async function extractDirectStream(desustreamUrl: string): Promise<string
     const html = await res.text();
     const mp4Url = extractMp4FromHtml(html);
     if (mp4Url) {
-      CACHE.extractedMp4.set(desustreamUrl, mp4Url);
+      EXTRACTED_DIRECT_CACHE.set(desustreamUrl, { mp4: mp4Url, ts: Date.now() });
       return mp4Url;
     }
   } catch {}
@@ -249,30 +260,37 @@ export async function resolveStream(
           };
 
           if (directStreams.length > 0) {
-            // Filter out expired googlevideo streams that cause 403 Forbidden
-            const validDirectStreams = directStreams.filter((s) => !s.url.includes("googlevideo.com"));
+            // For streams requiring IP/header proxying (such as googlevideo / desustream), route through video-proxy
+            const proxiedDirectStreams = directStreams.map((s) => {
+              if (s.url.includes("googlevideo.com") || s.url.includes("desustream")) {
+                const desuParam = details?.defaultStreamingUrl ? `&desustream=${encodeURIComponent(details.defaultStreamingUrl)}` : "";
+                return {
+                  ...s,
+                  url: `/api/pixuplay/video-proxy?url=${encodeURIComponent(s.url)}${desuParam}`,
+                };
+              }
+              return s;
+            });
 
-            if (validDirectStreams.length > 0) {
-              const best = validDirectStreams[0];
-              const maxQ = best.quality;
-              const maxQText = maxQ === "1080p" ? "1080p Full HD" : maxQ === "720p" ? "720p HD" : "480p SD";
+            const best = proxiedDirectStreams[0];
+            const maxQ = best.quality;
+            const maxQText = maxQ === "1080p" ? "1080p Full HD" : maxQ === "720p" ? "720p HD" : "480p SD";
 
-              servers.push({
-                name: `Server Fontaine (Maks ${maxQText} • Sub Indo)`,
-                label: `Fontaine • Maks ${maxQText}`,
-                region: "Fontaine",
-                quality: best.quality,
-                maxQuality: maxQ,
-                maxQualityLabel: `Maks ${maxQText}`,
-                type: "direct",
-                url: best.url,
-                qualities: validDirectStreams.map((s) => ({
-                  quality: s.quality,
-                  label: labelMap[s.quality] || s.quality.toUpperCase(),
-                  url: s.url,
-                })),
-              });
-            }
+            servers.push({
+              name: `Server Fontaine (Maks ${maxQText} • Sub Indo)`,
+              label: `Fontaine • Maks ${maxQText}`,
+              region: "Fontaine",
+              quality: best.quality,
+              maxQuality: maxQ,
+              maxQualityLabel: `Maks ${maxQText}`,
+              type: "direct",
+              url: best.url,
+              qualities: proxiedDirectStreams.map((s) => ({
+                quality: s.quality,
+                label: labelMap[s.quality] || s.quality.toUpperCase(),
+                url: s.url,
+              })),
+            });
           }
 
           let targetNatlanUrl = bestEmbedUrl || details?.defaultStreamingUrl;
@@ -355,44 +373,43 @@ export async function resolveStream(
       } catch {}
     }
 
-    // Always provide Server Sumeru & External fallbacks if we have few servers or for older anime
-    if (servers.length < 3) {
-      // Add Server Sumeru fallback (Curated Fast Mirror / Desustream stream)
-      servers.push({
-        name: "Server Sumeru (Maks 720p HD • Sub Indo)",
-        label: "Sumeru • Maks 720p HD",
-        region: "Sumeru",
+    // Filter out external redirect links — never display external partner portal links
+    const internalServers = servers.filter((s) => s.type !== "external");
+
+    // If no direct/embed servers are found, return fallback internal embed server instead of external link
+    if (internalServers.length === 0) {
+      internalServers.push({
+        name: "Server Natlan (Maks 720p HD • Sub Indo)",
+        label: "Natlan • Maks 720p HD",
+        region: "Natlan",
         quality: "720p",
         maxQuality: "720p",
         maxQualityLabel: "Maks 720p HD",
         type: "embed",
         url: `/api/pixuplay/embed-proxy?url=${encodeURIComponent(`https://desustream.net/dstream/playdesu/new/index.php?id=${Buffer.from(cleanTitle + "_" + epNum).toString("base64")}`)}`,
-        qualities: [{ quality: "720p", label: "720p HD", url: `/api/pixuplay/embed-proxy?url=${encodeURIComponent(`https://desustream.net/dstream/playdesu/new/index.php?id=${Buffer.from(cleanTitle + "_" + epNum).toString("base64")}`)}` }],
+        qualities: [{ quality: "720p", label: "720p HD (Auto)", url: `/api/pixuplay/embed-proxy?url=${encodeURIComponent(`https://desustream.net/dstream/playdesu/new/index.php?id=${Buffer.from(cleanTitle + "_" + epNum).toString("base64")}`)}` }],
       });
     }
 
-    if (servers.length === 0 || !servers.some((s) => s.region === "Fontaine")) {
-      servers.unshift({
-        name: "Server Fontaine (Maks 720p HD • Sub Indo)",
-        label: "Fontaine • Maks 720p HD",
-        region: "Fontaine",
-        quality: "720p",
-        maxQuality: "720p",
-        maxQualityLabel: "Maks 720p HD",
-        type: "external",
-        url: `https://otakudesu.blog/?s=${encodeURIComponent(cleanTitle)}`,
-      });
-    }
+    const result = {
+      title: `${cleanTitle} Episode ${epNum} Sub Indo`,
+      episode: epNum,
+      servers: internalServers,
+    };
+
+    // If a direct stream is a googlevideo link, resolve it on-the-fly via /api/pixuplay/video-proxy?url=
+    // Or better: keep stream cache short (1 minute) if it has googlevideo links
+    const hasGVideo = servers.some((s) => s.url.includes("googlevideo.com"));
+    const effectiveTtl = hasGVideo ? 30 * 1000 : CACHE_TTL_STREAM;
+
+    CACHE.stream.set(cacheKey, { data: result, timestamp: Date.now() - (CACHE_TTL_STREAM - effectiveTtl) });
+    return result;
   } catch (err: any) {
     console.error(`[Pixuplay Resolver Error] ${cleanTitle} Ep ${epNum}:`, err.message);
+    return {
+      title: `${cleanTitle} Episode ${epNum} Sub Indo`,
+      episode: epNum,
+      servers: [],
+    };
   }
-
-  const result = {
-    title: `${cleanTitle} Episode ${epNum} Sub Indo`,
-    episode: epNum,
-    servers,
-  };
-
-  CACHE.stream.set(cacheKey, { data: result, timestamp: Date.now() });
-  return result;
 }

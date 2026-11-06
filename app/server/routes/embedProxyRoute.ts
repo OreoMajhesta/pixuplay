@@ -45,7 +45,7 @@ export async function handleEmbedProxy(req: Request, clientIp: string): Promise<
       headers: {
         Referer: "https://otakudesu.blog/",
         "User-Agent":
-          "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
       },
       signal: AbortSignal.timeout(8000),
     });
@@ -276,6 +276,19 @@ export async function handleEmbedProxy(req: Request, clientIp: string): Promise<
     } else {
       html = `${baseTag}${rumInterceptor}` + html;
     }
+
+    // Rewrite any direct googlevideo.com video source URLs through our server video-proxy
+    // Note: MUST use absolute URL (https://pixuplay.xyz...) because inside the iframe, <base href="https://desustream.net/..."> is active!
+    // A relative path like "/api/pixuplay/..." would resolve against desustream.net/api/pixuplay/... which triggers 302 to drive.google.com!
+    html = html.replace(/https?:\/\/[^"'\s<>]*googlevideo\.com\/videoplayback[^"'\s<>]*/gi, (matchedGVideo) => {
+      const cleanUrl = matchedGVideo.replace(/&amp;/g, "&");
+      return `https://pixuplay.xyz/api/pixuplay/video-proxy?url=${encodeURIComponent(cleanUrl)}&desustream=${encodeURIComponent(targetUrl)}`;
+    });
+
+    // Also rewrite Google Drive / Google APIs media URLs in desudrive player
+    html = html.replace(/https?:\/\/www\.googleapis\.com\/drive\/v3\/files\/[a-zA-Z0-9_-]+\?alt=media[^"'\s<>]*/gi, (matchedDrive) => {
+      return `https://pixuplay.xyz/api/pixuplay/video-proxy?url=${encodeURIComponent(matchedDrive)}`;
+    });
 
     return new Response(html, {
       status: 200,
