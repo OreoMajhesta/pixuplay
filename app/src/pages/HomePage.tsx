@@ -91,6 +91,7 @@ export const HomePage: React.FC<HomePageProps> = ({
               title: { english: titleStr, romaji: titleStr },
               coverImage: { extraLarge: item.poster, large: item.poster },
               genres: item.genres,
+              status: item.status,
               description: item.description,
               episodes: item.totalEpisodes,
             };

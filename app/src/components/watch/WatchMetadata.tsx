@@ -69,7 +69,12 @@ export const WatchMetadata: React.FC<WatchMetadataProps> = ({
             <span>•</span>
             <span>Total {maxEpisode} Episode</span>
             <span>•</span>
-            <span>{anime.status === 'RELEASING' ? 'Ongoing' : 'Tamat'}</span>
+            <span>
+              {String(detailedAnime.status || anime.status || '').toUpperCase().includes('RELEASING') ||
+              String(detailedAnime.status || anime.status || '').toUpperCase().includes('ONGOING')
+                ? 'Ongoing'
+                : 'Tamat'}
+            </span>
           </div>
         </div>
 

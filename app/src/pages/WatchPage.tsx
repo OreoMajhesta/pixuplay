@@ -101,7 +101,7 @@ export const WatchPage: React.FC<WatchPageProps> = ({
     setDetailedAnime(anime);
   }, [anime]);
 
-  // Fetch full details if needed
+  // Fetch full details if needed (ensure episodeList and status are loaded)
   useEffect(() => {
     let isMounted = true;
     const animeKey = detailedAnime.animeId || detailedAnime.id;
@@ -112,15 +112,16 @@ export const WatchPage: React.FC<WatchPageProps> = ({
       desc.startsWith('Nonton streaming anime') ||
       desc.length < 80;
     const hasEpList = !!detailedAnime.episodeList && detailedAnime.episodeList.length > 0;
-    const hasEpCount = !!detailedAnime.episodes && parseInt(String(detailedAnime.episodes)) > 1;
+    const hasStatus = !!detailedAnime.status;
 
-    if (animeKey && (isGenericDesc || (!hasEpList && !hasEpCount))) {
+    if (animeKey && (isGenericDesc || !hasEpList || !hasStatus)) {
       getAnimeDetail(animeKey)
         .then((full) => {
           if (isMounted && full) {
             setDetailedAnime((prev) => ({
               ...prev,
               ...full,
+              status: full.status || prev.status,
               description: full.description || prev.description,
               episodeList: full.episodeList || prev.episodeList,
               episodes: full.episodes || prev.episodes,
@@ -133,7 +134,7 @@ export const WatchPage: React.FC<WatchPageProps> = ({
     return () => {
       isMounted = false;
     };
-  }, [detailedAnime.animeId, detailedAnime.id, detailedAnime.description]);
+  }, [detailedAnime.animeId, detailedAnime.id, detailedAnime.description, detailedAnime.status, detailedAnime.episodeList]);
 
   const title = getAnimeTitle(detailedAnime);
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -324,14 +325,19 @@ export const WatchPage: React.FC<WatchPageProps> = ({
     };
   }, [detailedAnime.animeId, detailedAnime.id, episode]);
 
-  // Max Episode calculation
+  // Max Episode calculation: for ongoing/releasing anime with episodeList, only allow released episodes
   const maxEpisode = useMemo(() => {
     if (detailedAnime.episodeList && detailedAnime.episodeList.length > 0) {
       return detailedAnime.episodeList.length;
     }
+    const statusUpper = String(detailedAnime.status || '').toUpperCase();
+    const isOngoing = statusUpper.includes('RELEASING') || statusUpper.includes('ONGOING');
+    if (isOngoing) {
+      return Math.max(1, episode);
+    }
     const epCount = parseInt(String(detailedAnime.episodes || '12'), 10);
     return isNaN(epCount) || epCount < 1 ? 12 : Math.max(epCount, episode);
-  }, [detailedAnime.episodeList, detailedAnime.episodes, episode]);
+  }, [detailedAnime.episodeList, detailedAnime.episodes, detailedAnime.status, episode]);
 
   // Player handlers
   const handleCanPlay = () => {

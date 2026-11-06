@@ -696,6 +696,7 @@ export const App: React.FC = () => {
         ep,
         watchedAt: timeStr,
         genres: anime.genres,
+        status: anime.status,
         currentTime: finalCurrentTime,
         duration: finalDuration,
         progressPercent: finalProgressPercent,

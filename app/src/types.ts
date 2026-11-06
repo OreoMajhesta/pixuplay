@@ -66,6 +66,7 @@ export interface HistoryItem {
   ep: number;
   watchedAt: string;
   genres?: string[];
+  status?: string;
   currentTime?: number;
   duration?: number;
   progressPercent?: number;

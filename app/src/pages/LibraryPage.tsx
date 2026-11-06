@@ -125,6 +125,7 @@ export const LibraryPage: React.FC<LibraryPageProps> = ({
             title: { english: group.title, romaji: group.title },
             coverImage: { extraLarge: group.poster, large: group.poster },
             genres: group.genres,
+            status: latestItem?.status,
             description: latestItem?.description,
             episodes: latestItem?.totalEpisodes,
           };
