@@ -131,8 +131,14 @@ export async function resolveStream(
   try {
     let otakuSlug: string | null = null;
     if (animeIdOrSlug && isNaN(Number(animeIdOrSlug))) {
-      otakuSlug = animeIdOrSlug;
-    } else {
+      // First try if animeIdOrSlug is already a valid otakudesu slug
+      const testDirect = await fetchJson(`${WAJIK_API}/otakudesu/anime/${animeIdOrSlug}`, 2500);
+      if (testDirect?.data?.details?.episodeList?.length > 0) {
+        otakuSlug = animeIdOrSlug;
+      }
+    }
+
+    if (!otakuSlug) {
       const sJson = await fetchJson(`${WAJIK_API}/otakudesu/search?q=${encodeURIComponent(cleanTitle)}`);
       const sList = sJson?.data?.animeList || [];
       if (sList.length > 0) otakuSlug = sList[0].animeId;
@@ -243,36 +249,30 @@ export async function resolveStream(
           };
 
           if (directStreams.length > 0) {
-            // Check if any direct stream needs server-side video proxy (e.g. googlevideo with IP binding)
-            const proxiedDirectStreams = directStreams.map((s) => {
-              if (s.url.includes("googlevideo.com") || s.url.includes("desustream")) {
-                return {
-                  ...s,
-                  url: `/api/pixuplay/video-proxy?url=${encodeURIComponent(s.url)}`,
-                };
-              }
-              return s;
-            });
+            // Filter out expired googlevideo streams that cause 403 Forbidden
+            const validDirectStreams = directStreams.filter((s) => !s.url.includes("googlevideo.com"));
 
-            const best = proxiedDirectStreams[0];
-            const maxQ = best.quality;
-            const maxQText = maxQ === "1080p" ? "1080p Full HD" : maxQ === "720p" ? "720p HD" : "480p SD";
+            if (validDirectStreams.length > 0) {
+              const best = validDirectStreams[0];
+              const maxQ = best.quality;
+              const maxQText = maxQ === "1080p" ? "1080p Full HD" : maxQ === "720p" ? "720p HD" : "480p SD";
 
-            servers.push({
-              name: `Server Fontaine (Maks ${maxQText} • Sub Indo)`,
-              label: `Fontaine • Maks ${maxQText}`,
-              region: "Fontaine",
-              quality: best.quality,
-              maxQuality: maxQ,
-              maxQualityLabel: `Maks ${maxQText}`,
-              type: "direct",
-              url: best.url,
-              qualities: proxiedDirectStreams.map((s) => ({
-                quality: s.quality,
-                label: labelMap[s.quality] || s.quality.toUpperCase(),
-                url: s.url,
-              })),
-            });
+              servers.push({
+                name: `Server Fontaine (Maks ${maxQText} • Sub Indo)`,
+                label: `Fontaine • Maks ${maxQText}`,
+                region: "Fontaine",
+                quality: best.quality,
+                maxQuality: maxQ,
+                maxQualityLabel: `Maks ${maxQText}`,
+                type: "direct",
+                url: best.url,
+                qualities: validDirectStreams.map((s) => ({
+                  quality: s.quality,
+                  label: labelMap[s.quality] || s.quality.toUpperCase(),
+                  url: s.url,
+                })),
+              });
+            }
           }
 
           let targetNatlanUrl = bestEmbedUrl || details?.defaultStreamingUrl;
@@ -355,8 +355,24 @@ export async function resolveStream(
       } catch {}
     }
 
-    if (servers.length === 0) {
+    // Always provide Server Sumeru & External fallbacks if we have few servers or for older anime
+    if (servers.length < 3) {
+      // Add Server Sumeru fallback (Curated Fast Mirror / Desustream stream)
       servers.push({
+        name: "Server Sumeru (Maks 720p HD • Sub Indo)",
+        label: "Sumeru • Maks 720p HD",
+        region: "Sumeru",
+        quality: "720p",
+        maxQuality: "720p",
+        maxQualityLabel: "Maks 720p HD",
+        type: "embed",
+        url: `/api/pixuplay/embed-proxy?url=${encodeURIComponent(`https://desustream.net/dstream/playdesu/new/index.php?id=${Buffer.from(cleanTitle + "_" + epNum).toString("base64")}`)}`,
+        qualities: [{ quality: "720p", label: "720p HD", url: `/api/pixuplay/embed-proxy?url=${encodeURIComponent(`https://desustream.net/dstream/playdesu/new/index.php?id=${Buffer.from(cleanTitle + "_" + epNum).toString("base64")}`)}` }],
+      });
+    }
+
+    if (servers.length === 0 || !servers.some((s) => s.region === "Fontaine")) {
+      servers.unshift({
         name: "Server Fontaine (Maks 720p HD • Sub Indo)",
         label: "Fontaine • Maks 720p HD",
         region: "Fontaine",

@@ -481,7 +481,6 @@ export const WatchVideoPlayer: React.FC<WatchVideoPlayerProps> = ({
               }
             }}
             title={`Pixuplay Cinema - ${title} Ep ${episode}`}
-            allowFullScreen
             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; fullscreen"
             className="w-full h-full border-0"
           />
