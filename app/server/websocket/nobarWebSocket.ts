@@ -1,4 +1,5 @@
 import { sanitizeSlug, sanitizeText, sanitizeSafeUrl } from "../security/crypto";
+import { db } from "../db/connection";
 
 export interface NobarWebSocketData {
   roomId: string;
@@ -124,6 +125,9 @@ export function createNobarWebSocketHandlers(serverGetter: () => any) {
             );
           }
           NOBAR_ROOMS.delete(roomId);
+          try {
+            db.query(`UPDATE direct_messages SET message = '[Room Nobar Telah Berakhir]' WHERE nobar_room_id = ?`).run(roomId);
+          } catch {}
         } else if (msg.type === "chat") {
           const cleanText = sanitizeText(msg.text, 300);
           if (cleanText) {

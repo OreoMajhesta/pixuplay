@@ -156,6 +156,7 @@ export interface DirectMessageItem {
   nobarRoomId?: string;
   nobarAnimeTitle?: string;
   nobarEpisode?: number;
+  isNobarActive?: boolean;
   isRead: boolean;
   createdAt: string;
 }

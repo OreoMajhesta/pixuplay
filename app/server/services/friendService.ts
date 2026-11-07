@@ -1,4 +1,5 @@
 import { db } from '../db/connection';
+import { NOBAR_ROOMS } from '../websocket/nobarWebSocket';
 import { calculateLevelData } from '../security/crypto';
 
 export interface FriendProfile {
@@ -247,6 +248,7 @@ export interface DirectMessageItem {
   nobarRoomId?: string;
   nobarAnimeTitle?: string;
   nobarEpisode?: number;
+  isNobarActive?: boolean;
   isRead: boolean;
   createdAt: string;
 }
@@ -335,17 +337,21 @@ export function getDirectMessages(
     )
     .all(userId, friendId, friendId, userId, limit) as any[];
 
-  return rows.map((r) => ({
-    id: r.id,
-    senderId: r.sender_id,
-    receiverId: r.receiver_id,
-    message: r.message,
-    msgType: r.msg_type,
-    nobarRoomId: r.nobar_room_id || undefined,
-    nobarAnimeTitle: r.nobar_anime_title || undefined,
-    nobarEpisode: r.nobar_episode || undefined,
-    isRead: !!r.is_read,
-    createdAt: r.created_at,
-  }));
+  return rows.map((r) => {
+    const isNobarActive = r.nobar_room_id ? NOBAR_ROOMS.has(r.nobar_room_id) : false;
+    return {
+      id: r.id,
+      senderId: r.sender_id,
+      receiverId: r.receiver_id,
+      message: r.message,
+      msgType: r.msg_type,
+      nobarRoomId: r.nobar_room_id || undefined,
+      nobarAnimeTitle: r.nobar_anime_title || undefined,
+      nobarEpisode: r.nobar_episode || undefined,
+      isNobarActive,
+      isRead: !!r.is_read,
+      createdAt: r.created_at,
+    };
+  });
 }
 

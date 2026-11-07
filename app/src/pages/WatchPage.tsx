@@ -587,6 +587,20 @@ export const WatchPage: React.FC<WatchPageProps> = ({
       triggerFloatingReaction(emoji);
     };
 
+    client.onUserJoined = (name) => {
+      // If I am host and a new guest joins, instantly send my exact playback state so guest syncs immediately!
+      if (role === 'host' && videoRef.current) {
+        nobarClientRef.current?.sendSync(
+          videoRef.current.currentTime,
+          !videoRef.current.paused,
+          episode,
+          currentServer?.url,
+          String(detailedAnime.animeId || detailedAnime.id),
+          title
+        );
+      }
+    };
+
     client.onSync = (ev: NobarSyncEvent) => {
       if (role === 'guest') {
         if (ev.episode && ev.episode !== episode) {
@@ -601,6 +615,23 @@ export const WatchPage: React.FC<WatchPageProps> = ({
           if (ev.isPlaying && videoRef.current.paused) {
             videoRef.current.play().catch(() => {});
           } else if (!ev.isPlaying && !videoRef.current.paused) {
+            videoRef.current.pause();
+          }
+        }
+      }
+    };
+
+    client.onRoomState = (roomState) => {
+      if (role === 'guest' && roomState) {
+        if (roomState.episode && roomState.episode !== episode) {
+          onSelectEpisode(roomState.episode);
+        }
+        if (videoRef.current) {
+          videoRef.current.currentTime = roomState.currentTime;
+          targetSeekTimeRef.current = roomState.currentTime;
+          if (roomState.isPlaying && videoRef.current.paused) {
+            videoRef.current.play().catch(() => {});
+          } else if (!roomState.isPlaying && !videoRef.current.paused) {
             videoRef.current.pause();
           }
         }

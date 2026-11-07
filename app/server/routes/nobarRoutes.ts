@@ -1,6 +1,7 @@
 import { NOBAR_ROOMS, NobarRoom, cleanupExpiredRooms } from "../websocket/nobarWebSocket";
 import { jsonResponse, parseJsonBody, isRateLimited } from "../security/rateLimiter";
 import { sanitizeSlug, sanitizeText, sanitizeSafeUrl } from "../security/crypto";
+import { db } from "../db/connection";
 
 export async function handleNobarRoutes(
   req: Request,
@@ -142,6 +143,12 @@ export async function handleNobarRoutes(
         );
       }
       NOBAR_ROOMS.delete(roomId);
+
+      // Also mark any direct message invites for this room in DB as expired
+      try {
+        db.query(`UPDATE direct_messages SET message = '[Room Nobar Telah Berakhir]' WHERE nobar_room_id = ?`).run(roomId);
+      } catch {}
+
       return jsonResponse({ status: true, message: "Room berhasil dibubarkan" });
     }
 

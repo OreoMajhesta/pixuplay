@@ -176,28 +176,43 @@ export const FriendChatModal: React.FC<FriendChatModalProps> = ({
                       }`}
                     >
                       <div className="flex items-center gap-2 mb-2">
-                        <div className="w-7 h-7 rounded-lg bg-red-600 flex items-center justify-center text-white flex-shrink-0">
-                          <Radio className="w-4 h-4" />
+                        <div
+                          className={`w-7 h-7 rounded-lg flex items-center justify-center text-white flex-shrink-0 ${
+                            m.isNobarActive ? 'bg-red-600' : 'bg-neutral-700'
+                          }`}
+                        >
+                          <Radio className={`w-4 h-4 ${m.isNobarActive ? 'animate-pulse' : 'opacity-40'}`} />
                         </div>
                         <div className="min-w-0">
-                          <div className="text-[10px] font-bold uppercase tracking-wider text-red-400">
-                            Undangan Nobar
+                          <div
+                            className={`text-[10px] font-bold uppercase tracking-wider ${
+                              m.isNobarActive ? 'text-red-400' : 'text-neutral-500'
+                            }`}
+                          >
+                            {m.isNobarActive ? 'Undangan Nobar' : 'Nobar Berakhir'}
                           </div>
                           <div className="text-xs font-black truncate">{m.nobarAnimeTitle || 'Anime'}</div>
                         </div>
                       </div>
                       <p className="text-xs text-neutral-300 mb-3">{m.message}</p>
-                      {onJoinNobarRoom && (
-                        <button
-                          onClick={() => {
-                            onJoinNobarRoom(m.nobarRoomId!);
-                            onClose();
-                          }}
-                          className="w-full py-2 bg-red-600 hover:bg-red-500 text-white text-xs font-bold rounded-xl flex items-center justify-center gap-1.5 cursor-pointer shadow transition-all active:scale-98"
-                        >
-                          <Play className="w-3.5 h-3.5 fill-white" />
-                          <span>Gabung Room Nobar</span>
-                        </button>
+                      {m.isNobarActive ? (
+                        onJoinNobarRoom && (
+                          <button
+                            onClick={() => {
+                              onJoinNobarRoom(m.nobarRoomId!);
+                              onClose();
+                            }}
+                            className="w-full py-2 bg-red-600 hover:bg-red-500 text-white text-xs font-bold rounded-xl flex items-center justify-center gap-1.5 cursor-pointer shadow transition-all active:scale-98"
+                          >
+                            <Play className="w-3.5 h-3.5 fill-white" />
+                            <span>Gabung Room Nobar</span>
+                          </button>
+                        )
+                      ) : (
+                        <div className="w-full py-2 bg-neutral-800 text-neutral-500 text-xs font-semibold rounded-xl flex items-center justify-center gap-1.5 cursor-not-allowed border border-white/5">
+                          <Clock className="w-3.5 h-3.5" />
+                          <span>Room Telah Berakhir</span>
+                        </div>
                       )}
                     </div>
                   ) : (
