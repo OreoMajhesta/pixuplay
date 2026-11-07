@@ -9,6 +9,7 @@ import {
   UserCheck,
 } from 'lucide-react';
 import logoNav from '../assets/logo_nav.svg';
+import { loadGoogleGsiScript } from '../services/googleAuthLoader';
 
 interface WelcomeModalProps {
   isOpen: boolean;
@@ -55,38 +56,40 @@ export const WelcomeModal: React.FC<WelcomeModalProps> = ({
       '1042260047227-83if5kgps15jm4e8n6ebl5rb1iiu67sh.apps.googleusercontent.com';
 
     const renderButton = () => {
-      if (window.google?.accounts?.id && googleBtnRef.current) {
-        try {
-          window.google.accounts.id.initialize({
-            client_id: clientId,
-            callback: async (response: any) => {
-              if (response?.credential && onGoogleLoginSuccess) {
-                try {
-                  await onGoogleLoginSuccess(response.credential);
-                  onClose();
-                } catch (e) {
-                  console.error('Login error in WelcomeModal:', e);
+      loadGoogleGsiScript().then(() => {
+        if (window.google?.accounts?.id && googleBtnRef.current) {
+          try {
+            window.google.accounts.id.initialize({
+              client_id: clientId,
+              callback: async (response: any) => {
+                if (response?.credential && onGoogleLoginSuccess) {
+                  try {
+                    await onGoogleLoginSuccess(response.credential);
+                    onClose();
+                  } catch (e) {
+                    console.error('Login error in WelcomeModal:', e);
+                  }
                 }
-              }
-            },
-            auto_select: false,
-            cancel_on_tap_outside: true,
-          });
+              },
+              auto_select: false,
+              cancel_on_tap_outside: true,
+            });
 
-          googleBtnRef.current.innerHTML = '';
-          window.google.accounts.id.renderButton(googleBtnRef.current, {
-            theme: 'filled_black',
-            size: 'large',
-            text: 'signin_with',
-            shape: 'rectangular',
-            logo_alignment: 'left',
-            locale: 'id',
-            width: 320,
-          });
-        } catch (err) {
-          console.warn('Failed to render GIS in WelcomeModal', err);
+            googleBtnRef.current.innerHTML = '';
+            window.google.accounts.id.renderButton(googleBtnRef.current, {
+              theme: 'filled_black',
+              size: 'large',
+              text: 'signin_with',
+              shape: 'rectangular',
+              logo_alignment: 'left',
+              locale: 'id',
+              width: 320,
+            });
+          } catch (err) {
+            console.warn('Failed to render GIS in WelcomeModal', err);
+          }
         }
-      }
+      });
     };
 
     if (window.google?.accounts?.id) {

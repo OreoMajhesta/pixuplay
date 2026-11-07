@@ -13,6 +13,7 @@ import { ProfileLevelCard } from '../components/profile/ProfileLevelCard';
 import { ProfileCloudSync } from '../components/profile/ProfileCloudSync';
 import { ProfileAvatarModal } from '../components/profile/ProfileAvatarModal';
 import { ProfileSettingsSection } from '../components/profile/ProfileSettingsSection';
+import { loadGoogleGsiScript } from '../services/googleAuthLoader';
 
 interface ProfilePageProps {
   currentUser?: UserProfile | null;
@@ -124,43 +125,45 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
       '1042260047227-83if5kgps15jm4e8n6ebl5rb1iiu67sh.apps.googleusercontent.com';
 
     const renderGoogleButton = () => {
-      if (window.google?.accounts?.id && googleBtnRef.current) {
-        try {
-          window.google.accounts.id.initialize({
-            client_id: clientId,
-            callback: async (response: any) => {
-              if (response?.credential) {
-                setIsLoggingIn(true);
-                setLoginError(null);
-                try {
-                  await onGoogleLogin(response.credential);
-                  setClearedMsg('Berhasil masuk dengan akun Google!');
-                  setTimeout(() => setClearedMsg(null), 4000);
-                } catch (err: any) {
-                  setLoginError(err?.message || 'Gagal masuk dengan Google');
-                } finally {
-                  setIsLoggingIn(false);
+      loadGoogleGsiScript().then(() => {
+        if (window.google?.accounts?.id && googleBtnRef.current) {
+          try {
+            window.google.accounts.id.initialize({
+              client_id: clientId,
+              callback: async (response: any) => {
+                if (response?.credential) {
+                  setIsLoggingIn(true);
+                  setLoginError(null);
+                  try {
+                    await onGoogleLogin(response.credential);
+                    setClearedMsg('Berhasil masuk dengan akun Google!');
+                    setTimeout(() => setClearedMsg(null), 4000);
+                  } catch (err: any) {
+                    setLoginError(err?.message || 'Gagal masuk dengan Google');
+                  } finally {
+                    setIsLoggingIn(false);
+                  }
                 }
-              }
-            },
-            auto_select: false,
-            cancel_on_tap_outside: true,
-          });
+              },
+              auto_select: false,
+              cancel_on_tap_outside: true,
+            });
 
-          googleBtnRef.current.innerHTML = '';
-          window.google.accounts.id.renderButton(googleBtnRef.current, {
-            theme: 'filled_black',
-            size: 'large',
-            text: 'signin_with',
-            shape: 'rectangular',
-            logo_alignment: 'left',
-            locale: 'id',
-            width: 320,
-          });
-        } catch (e) {
-          console.warn('Failed to render Google button', e);
+            googleBtnRef.current.innerHTML = '';
+            window.google.accounts.id.renderButton(googleBtnRef.current, {
+              theme: 'filled_black',
+              size: 'large',
+              text: 'signin_with',
+              shape: 'rectangular',
+              logo_alignment: 'left',
+              locale: 'id',
+              width: 320,
+            });
+          } catch (e) {
+            console.warn('Google GSI render error', e);
+          }
         }
-      }
+      });
     };
 
     if (window.google?.accounts?.id) {
