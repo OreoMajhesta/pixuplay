@@ -147,60 +147,63 @@ export const NobarRoomPanel: React.FC<NobarRoomPanelProps> = ({
   // Active YouTube Live Chat Room View
   return (
     <div className="relative bg-[#0f0f0f] border border-subtle rounded-2xl flex flex-col h-full overflow-hidden text-white shadow-xl">
-      {/* Top Header: YouTube Live Style */}
-      <div className="px-4 py-3 bg-[#181818] border-b border-subtle flex items-center justify-between gap-2 flex-shrink-0">
-        <div className="flex items-center gap-2.5 min-w-0">
-          <div className="relative flex items-center justify-center">
+      {/* Top Header: Clean, Ultra-Neat YouTube Live Style */}
+      <div className="px-3.5 py-2.5 bg-[#181818] border-b border-subtle flex items-center justify-between gap-3 flex-shrink-0">
+        {/* Left Side: Live Dot + Live Chat Title + Role Badge */}
+        <div className="flex items-center gap-2 min-w-0 flex-1">
+          <div className="flex items-center gap-1.5 flex-shrink-0">
             <span
-              className={`w-2.5 h-2.5 rounded-full ${
-                isConnected ? 'bg-red-500 animate-pulse ring-4 ring-red-500/20' : 'bg-amber-500'
+              className={`w-2 h-2 rounded-full ${
+                isConnected ? 'bg-red-500 animate-pulse' : 'bg-neutral-600'
               }`}
             />
+            <MessageSquare className="w-4 h-4 text-red-500 flex-shrink-0" />
+            <span className="text-xs font-black tracking-wider text-white whitespace-nowrap">
+              LIVE CHAT
+            </span>
           </div>
-          <div className="min-w-0">
-            <div className="flex items-center gap-2">
-              <span className="text-xs font-black tracking-wide text-white flex items-center gap-1.5">
-                <MessageSquare className="w-3.5 h-3.5 text-red-500" />
-                LIVE CHAT
-              </span>
-              {role === 'host' ? (
-                <span className="flex items-center gap-1 px-1.5 py-0.5 bg-amber-500/10 border border-amber-500/30 text-amber-300 text-[9px] font-black rounded-full">
-                  <Crown className="w-2.5 h-2.5 fill-amber-400 text-amber-400" /> HOST
-                </span>
-              ) : (
-                <span className="px-1.5 py-0.5 bg-neutral-800 text-neutral-300 text-[9px] font-semibold rounded-full border border-subtle">
-                  PESERTA
-                </span>
-              )}
-            </div>
-            <p className="text-[10px] text-neutral-400 truncate">
-              {role === 'host' ? 'Sinkronisasi dikontrol oleh Anda' : `Mengikuti: ${room.hostName}`}
-            </p>
-          </div>
+
+          {role === 'host' ? (
+            <span className="flex-shrink-0 flex items-center gap-1 px-1.5 py-0.5 bg-amber-500/10 border border-amber-500/30 text-amber-300 text-[9px] font-black rounded-full">
+              <Crown className="w-2.5 h-2.5 fill-amber-400 text-amber-400" /> HOST
+            </span>
+          ) : (
+            <span className="flex-shrink-0 px-1.5 py-0.5 bg-neutral-800 text-neutral-300 text-[9px] font-semibold rounded-full border border-subtle">
+              PESERTA
+            </span>
+          )}
+
+          <span className="text-[10px] text-neutral-400 truncate hidden sm:inline" title={role === 'host' ? 'Host' : `Mengikuti: ${room.hostName}`}>
+            • {role === 'host' ? 'Host' : `Host: ${room.hostName}`}
+          </span>
         </div>
 
-        <div className="flex items-center gap-1.5">
+        {/* Right Side Action Buttons: Uniform Height & Sleek Layout */}
+        <div className="flex items-center gap-1 flex-shrink-0">
+          {/* Send to Friend Button */}
           <button
             onClick={() => setShowShareModal(true)}
-            className="px-2.5 py-1.5 rounded-lg bg-red-600/20 hover:bg-red-600/30 text-red-300 hover:text-white transition-colors cursor-pointer text-[10px] font-semibold flex items-center gap-1 border border-red-500/30"
+            className="h-7.5 px-2.5 rounded-lg bg-red-600/15 hover:bg-red-600/30 text-red-400 hover:text-red-300 transition-colors cursor-pointer text-[11px] font-bold flex items-center gap-1.5 border border-red-500/25 whitespace-nowrap"
             title="Undang Teman ke Room Nobar"
           >
-            <Users className="w-3 h-3 text-red-400" />
-            <span className="hidden sm:inline">Kirim ke Teman</span>
+            <Users className="w-3.5 h-3.5" />
+            <span>Kirim Teman</span>
           </button>
 
+          {/* Copy Link Button */}
           <button
             onClick={handleCopy}
-            className="px-2.5 py-1.5 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-neutral-200 hover:text-white transition-colors cursor-pointer text-[10px] font-semibold flex items-center gap-1 border border-subtle"
+            className="h-7.5 px-2.5 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-neutral-300 hover:text-white transition-colors cursor-pointer text-[11px] font-bold flex items-center gap-1.5 border border-subtle whitespace-nowrap"
             title="Salin Link Room"
           >
-            {copied ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
-            <span className="hidden sm:inline">{copied ? 'Tersalin' : 'Salin Link'}</span>
+            {copied ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+            <span>{copied ? 'Tersalin' : 'Salin'}</span>
           </button>
 
+          {/* Leave / Disband Room Button */}
           <button
             onClick={onLeaveRoom}
-            className="p-1.5 rounded-lg hover:bg-red-950/40 text-neutral-400 hover:text-red-400 transition-colors cursor-pointer text-[10px] flex items-center gap-1 border border-subtle"
+            className="h-7.5 w-7.5 rounded-lg bg-neutral-800/80 hover:bg-red-600/20 text-neutral-400 hover:text-red-400 transition-colors cursor-pointer flex items-center justify-center border border-subtle flex-shrink-0"
             title={role === 'host' ? 'Bubarkan Room Nobar' : 'Keluar dari Room Nobar'}
           >
             <LogOut className="w-3.5 h-3.5" />
