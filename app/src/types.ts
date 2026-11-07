@@ -127,3 +127,27 @@ export interface UserProfile {
   level?: number;
   levelTitle?: string;
 }
+
+export interface FriendProfile {
+  id: string;
+  name: string;
+  avatar: string;
+  tagId: number;
+  level: number;
+  exp: number;
+  watchTimeSeconds?: number;
+}
+
+export interface FriendItem {
+  id: number;
+  friend: FriendProfile;
+  status: 'pending' | 'accepted' | 'rejected';
+  isSender: boolean;
+  createdAt: string;
+}
+
+export interface FriendListData {
+  friends: FriendProfile[];
+  pendingReceived: FriendItem[];
+  pendingSent: FriendItem[];
+}

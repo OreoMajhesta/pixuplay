@@ -6,6 +6,7 @@ import { getClientIp, globalSecurityHeaders, jsonResponse } from "./security/rat
 import { handleAnimeRoutes } from "./routes/animeRoutes";
 import { handleAuthRoutes } from "./routes/authRoutes";
 import { handleInteractionRoutes } from "./routes/interactionRoutes";
+import { handleFriendRoutes } from "./routes/friendRoutes";
 import { handleNobarRoutes } from "./routes/nobarRoutes";
 import { handleEmbedProxy } from "./routes/embedProxyRoute";
 import { handleVideoProxy } from "./routes/videoProxyRoute";
@@ -100,6 +101,10 @@ serverInstance = serve<NobarWebSocketData>({
     // Authentication & User cloud sync
     const authRes = await handleAuthRoutes(req, url, clientIp);
     if (authRes) return authRes;
+
+    // Friendships & Social Features
+    const friendRes = await handleFriendRoutes(req, url, clientIp);
+    if (friendRes) return friendRes;
 
     // Nobar Watch Party HTTP endpoints
     const nobarRes = await handleNobarRoutes(req, url, clientIp, () => serverInstance);
