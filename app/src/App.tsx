@@ -1,9 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Navbar } from './components/Navbar';
-import { DetailModal } from './components/DetailModal';
 import { FloatingMiniPlayer } from './components/FloatingMiniPlayer';
-import { SearchModal } from './components/SearchModal';
 import { PageSkeleton } from './components/common/PageSkeleton';
+
+const DetailModal = React.lazy(() => import('./components/DetailModal').then((m) => ({ default: m.DetailModal })));
+const SearchModal = React.lazy(() => import('./components/SearchModal').then((m) => ({ default: m.SearchModal })));
+const WelcomeModal = React.lazy(() => import('./components/WelcomeModal').then((m) => ({ default: m.WelcomeModal })));
+const DonateModal = React.lazy(() => import('./components/DonateModal').then((m) => ({ default: m.DonateModal })));
+const ContentWarningModal = React.lazy(() => import('./components/ContentWarningModal').then((m) => ({ default: m.ContentWarningModal })));
 
 const HomePage = React.lazy(() => import('./pages/HomePage').then((m) => ({ default: m.HomePage })));
 const SchedulePage = React.lazy(() => import('./pages/SchedulePage').then((m) => ({ default: m.SchedulePage })));
@@ -11,10 +15,8 @@ const CatalogPage = React.lazy(() => import('./pages/CatalogPage').then((m) => (
 const LibraryPage = React.lazy(() => import('./pages/LibraryPage').then((m) => ({ default: m.LibraryPage })));
 const ProfilePage = React.lazy(() => import('./pages/ProfilePage').then((m) => ({ default: m.ProfilePage })));
 const WatchPage = React.lazy(() => import('./pages/WatchPage').then((m) => ({ default: m.WatchPage })));
-import { ContentWarningModal, checkIsSensitiveContent } from './components/ContentWarningModal';
-import { DonateModal } from './components/DonateModal';
+import { checkIsSensitiveContent } from './components/ContentWarningModal';
 import { ConfirmDeleteModal } from './components/ConfirmDeleteModal';
-import { WelcomeModal } from './components/WelcomeModal';
 import { Anime, HistoryItem, SavedItem, StreamServer, UserProfile } from './types';
 import {
   loginWithGoogleCredential,
