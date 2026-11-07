@@ -14,6 +14,7 @@ const SchedulePage = React.lazy(() => import('./pages/SchedulePage').then((m) =>
 const CatalogPage = React.lazy(() => import('./pages/CatalogPage').then((m) => ({ default: m.CatalogPage })));
 const LibraryPage = React.lazy(() => import('./pages/LibraryPage').then((m) => ({ default: m.LibraryPage })));
 const ProfilePage = React.lazy(() => import('./pages/ProfilePage').then((m) => ({ default: m.ProfilePage })));
+const FriendsPage = React.lazy(() => import('./pages/FriendsPage').then((m) => ({ default: m.FriendsPage })));
 const WatchPage = React.lazy(() => import('./pages/WatchPage').then((m) => ({ default: m.WatchPage })));
 import { checkIsSensitiveContent } from './components/ContentWarningModal';
 import { ConfirmDeleteModal } from './components/ConfirmDeleteModal';
@@ -956,6 +957,14 @@ export const App: React.FC = () => {
                     const res = await fetchCurrentUserData();
                     if (res?.user) setCurrentUser(res.user);
                   }}
+                />
+              )}
+
+              {activeTab === 'friends' && (
+                <FriendsPage
+                  currentUser={currentUser}
+                  onNavigateTab={handleNavigateTab}
+                  onOpenLogin={() => handleNavigateTab('profil')}
                 />
               )}
             </>

@@ -13,7 +13,6 @@ import { ProfileLevelCard } from '../components/profile/ProfileLevelCard';
 import { ProfileCloudSync } from '../components/profile/ProfileCloudSync';
 import { ProfileAvatarModal } from '../components/profile/ProfileAvatarModal';
 import { ProfileSettingsSection } from '../components/profile/ProfileSettingsSection';
-import { ProfileFriendsSection } from '../components/profile/ProfileFriendsSection';
 import { loadGoogleGsiScript } from '../services/googleAuthLoader';
 
 interface ProfilePageProps {
@@ -311,9 +310,6 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
         onSelectAvatar={handleSelectAvatar}
         onError={(err) => setLoginError(err)}
       />
-
-      {/* Friends & Social Section (Only when logged in) */}
-      {currentUser && <ProfileFriendsSection currentUser={currentUser} />}
 
       <ProfileSettingsSection
         currentUser={currentUser}
