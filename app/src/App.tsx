@@ -431,7 +431,7 @@ export const App: React.FC = () => {
             },
           };
         }
-        handlePlayEpisode(animeObj, room.episode || 1);
+        await handlePlayEpisode(animeObj, room.episode || 1);
       }
     })();
   }, []);
@@ -578,6 +578,14 @@ export const App: React.FC = () => {
     const animeId = warningState.anime.id || warningState.anime.animeId;
     sessionStorage.setItem(`pixuplay_warning_accepted_${animeId}`, 'true');
     actuallyPlayEpisode(warningState.anime, warningState.episode, warningState.resumeTime || 0);
+    setWarningState(null);
+  };
+
+  const handleCancelWarning = () => {
+    // If the warning came from a pending Nobar room join, cancel the nobar room
+    if (activeNobarRoomId && !playingAnime) {
+      handleNobarRoomChange(null);
+    }
     setWarningState(null);
   };
 
@@ -965,9 +973,34 @@ export const App: React.FC = () => {
                   currentUser={currentUser}
                   onNavigateTab={handleNavigateTab}
                   onOpenLogin={() => handleNavigateTab('profil')}
-                  onJoinNobarRoom={(roomId) => {
-                    handleNobarRoomChange(roomId);
-                    handleNavigateTab('home');
+                  onJoinNobarRoom={async (roomId) => {
+                    setActiveNobarRoomId(roomId);
+                    try {
+                      const url = new URL(window.location.href);
+                      url.searchParams.set('nobar', roomId);
+                      window.history.pushState({}, '', url.toString());
+                    } catch {}
+                    const room = await getNobarRoom(roomId);
+                    if (room) {
+                      let animeObj: Anime | null = null;
+                      if (room.animeId) {
+                        animeObj = await getAnimeDetail(room.animeId);
+                      }
+                      if (!animeObj) {
+                        animeObj = {
+                          id: room.animeId || 'nobar-anime',
+                          animeId: room.animeId,
+                          title: { english: room.animeTitle, romaji: room.animeTitle },
+                          coverImage: {
+                            extraLarge:
+                              'https://images.unsplash.com/photo-1578632767115-351597cf2477?w=500&auto=format&fit=crop&q=80',
+                          },
+                        };
+                      }
+                      await handlePlayEpisode(animeObj, room.episode || 1);
+                    } else {
+                      handleNobarRoomChange(roomId);
+                    }
                   }}
                   activeNobarRoomId={activeNobarRoomId}
                   activeNobarAnimeTitle={playingAnime ? getAnimeTitle(playingAnime) : undefined}
@@ -1066,7 +1099,7 @@ export const App: React.FC = () => {
         episodeNumber={warningState?.episode || 1}
         detectedGenres={warningState?.genres || []}
         onConfirm={handleConfirmWarning}
-        onCancel={() => setWarningState(null)}
+        onCancel={handleCancelWarning}
       />
 
       {/* Nobar Exit Confirmation Modal when playing another anime (Fixes Bug 2) */}

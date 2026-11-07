@@ -38,6 +38,10 @@ export const ProfileFriendsSection: React.FC<ProfileFriendsSectionProps> = ({
 
   useEffect(() => {
     loadFriends();
+
+    // Poll friend list & unread count every 5 seconds
+    const timer = setInterval(loadFriends, 5000);
+    return () => clearInterval(timer);
   }, [currentUser.id]);
 
   const handleSearch = async (e: React.FormEvent) => {
@@ -288,11 +292,16 @@ export const ProfileFriendsSection: React.FC<ProfileFriendsSectionProps> = ({
                   {onOpenChatWithFriend && (
                     <button
                       onClick={() => onOpenChatWithFriend(friend)}
-                      className="px-2.5 py-1.5 bg-neutral-800 hover:bg-neutral-700 text-neutral-200 hover:text-white rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1"
+                      className="relative px-2.5 py-1.5 bg-neutral-800 hover:bg-neutral-700 text-neutral-200 hover:text-white rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1"
                       title="Chat dengan Teman"
                     >
                       <MessageCircle className="w-3.5 h-3.5 text-red-400" />
                       <span>Chat</span>
+                      {friend.unreadCount && friend.unreadCount > 0 ? (
+                        <span className="absolute -top-1.5 -right-1.5 px-1.5 py-0.2 bg-red-600 text-white font-mono text-[9px] font-black rounded-full shadow-lg border border-neutral-900 animate-pulse">
+                          {friend.unreadCount > 99 ? '99+' : friend.unreadCount}
+                        </span>
+                      ) : null}
                     </button>
                   )}
 

@@ -136,6 +136,7 @@ export interface FriendProfile {
   level: number;
   exp: number;
   watchTimeSeconds?: number;
+  unreadCount?: number;
 }
 
 export interface FriendItem {

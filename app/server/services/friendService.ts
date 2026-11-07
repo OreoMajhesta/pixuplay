@@ -10,6 +10,7 @@ export interface FriendProfile {
   exp: number;
   status?: string;
   watchTimeSeconds?: number;
+  unreadCount?: number;
 }
 
 export interface FriendItem {
@@ -154,25 +155,27 @@ export function getFriendList(userId: string): {
     .query(
       `
       SELECT f.id, f.created_at,
-             u.id as u_id, u.name, u.avatar, u.tag_id, u.exp, u.watch_time_seconds
+             u.id as u_id, u.name, u.avatar, u.tag_id, u.exp, u.watch_time_seconds,
+             (SELECT COUNT(*) FROM direct_messages WHERE sender_id = u.id AND receiver_id = ? AND is_read = 0) as unread_count
       FROM friendships f
       JOIN users u ON (CASE WHEN f.user_id = ? THEN f.friend_id ELSE f.user_id END) = u.id
       WHERE (f.user_id = ? OR f.friend_id = ?) AND f.status = 'accepted'
       ORDER BY f.updated_at DESC
     `
     )
-    .all(userId, userId, userId) as any[];
+    .all(userId, userId, userId, userId) as any[];
 
-  const friends = acceptedRows.map((r) =>
-    mapPublicProfile({
+  const friends = acceptedRows.map((r) => ({
+    ...mapPublicProfile({
       id: r.u_id,
       name: r.name,
       avatar: r.avatar,
       tag_id: r.tag_id,
       exp: r.exp,
       watch_time_seconds: r.watch_time_seconds,
-    })
-  );
+    }),
+    unreadCount: Number(r.unread_count || 0),
+  }));
 
   // Pending requests received by me
   const receivedRows = db

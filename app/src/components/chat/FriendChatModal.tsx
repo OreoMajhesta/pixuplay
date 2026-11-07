@@ -35,6 +35,7 @@ export const FriendChatModal: React.FC<FriendChatModalProps> = ({
     if (!friend) return;
     const res = await fetchDirectMessages(friend.id);
     setMessages(res);
+    friend.unreadCount = 0;
   };
 
   useEffect(() => {
