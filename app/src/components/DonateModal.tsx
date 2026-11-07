@@ -67,7 +67,15 @@ export const DonateModal: React.FC<DonateModalProps> = ({ isOpen, onClose }) => 
             >
               <div className="flex items-center gap-2.5">
                 <div className="w-9 h-9 rounded-lg bg-surface border border-subtle flex items-center justify-center p-1.5 flex-shrink-0 overflow-hidden">
-                  <img src={saweriaLogo} alt="Saweria" className="w-full h-full object-contain" />
+                  <img
+          src={saweriaLogo}
+          alt="Saweria"
+          width="24"
+          height="24"
+          loading="lazy"
+          decoding="async"
+          className="w-full h-full object-contain"
+        />
                 </div>
                 <div>
                   <div className="text-xs font-bold text-white group-hover:text-amber-300 flex items-center gap-1">
@@ -90,7 +98,15 @@ export const DonateModal: React.FC<DonateModalProps> = ({ isOpen, onClose }) => 
             >
               <div className="flex items-center gap-2.5">
                 <div className="w-9 h-9 rounded-lg bg-surface border border-subtle flex items-center justify-center p-1.5 flex-shrink-0 overflow-hidden">
-                  <img src={kofiLogo} alt="Ko-fi" className="w-full h-full object-contain" />
+                  <img
+          src={kofiLogo}
+          alt="Ko-fi"
+          width="24"
+          height="24"
+          loading="lazy"
+          decoding="async"
+          className="w-full h-full object-contain"
+        />
                 </div>
                 <div>
                   <div className="text-xs font-bold text-white group-hover:text-blue-300 flex items-center gap-1">

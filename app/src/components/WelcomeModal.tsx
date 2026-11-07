@@ -124,7 +124,7 @@ export const WelcomeModal: React.FC<WelcomeModalProps> = ({
         {/* Header with Logo */}
         <div className="text-center space-y-2 pt-1">
           <div className="flex items-center justify-center gap-2 mb-3">
-            <img src={logoNav} alt="Pixuplay Logo" className="h-7 w-auto object-contain" />
+            <img src={logoNav} alt="Pixuplay Logo" width="120" height="28" decoding="async" className="h-7 w-auto object-contain" />
           </div>
           <h2 className="text-xl sm:text-2xl font-black text-white tracking-tight">
             Selamat Datang di Pixuplay

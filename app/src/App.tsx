@@ -967,7 +967,7 @@ export const App: React.FC = () => {
       <footer className="border-t border-subtle bg-black py-8 px-4 text-xs text-muted">
         <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-2">
-            <img src={logoNav} alt="PIXUPLAY" className="h-6 w-auto object-contain" />
+            <img src={logoNav} alt="PIXUPLAY" width="120" height="24" decoding="async" className="h-6 w-auto object-contain" />
             <span>—</span>
             <span>Streaming Anime Sub Indo</span>
           </div>
