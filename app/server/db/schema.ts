@@ -107,6 +107,26 @@ export function initDatabase() {
   db.run(`CREATE INDEX IF NOT EXISTS idx_friendships_friend ON friendships (friend_id);`);
   db.run(`CREATE INDEX IF NOT EXISTS idx_friendships_status ON friendships (status);`);
 
+  // 7. Direct Messages (Friend Chat & Nobar Room Invites)
+  db.run(`
+    CREATE TABLE IF NOT EXISTS direct_messages (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      sender_id TEXT NOT NULL,
+      receiver_id TEXT NOT NULL,
+      message TEXT NOT NULL,
+      msg_type TEXT NOT NULL DEFAULT 'text',
+      nobar_room_id TEXT,
+      nobar_anime_title TEXT,
+      nobar_episode INTEGER,
+      is_read INTEGER NOT NULL DEFAULT 0,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (sender_id) REFERENCES users(id) ON DELETE CASCADE,
+      FOREIGN KEY (receiver_id) REFERENCES users(id) ON DELETE CASCADE
+    );
+  `);
+  db.run(`CREATE INDEX IF NOT EXISTS idx_dm_users ON direct_messages (sender_id, receiver_id);`);
+  db.run(`CREATE INDEX IF NOT EXISTS idx_dm_receiver ON direct_messages (receiver_id, is_read);`);
+
   // Run data migrations
   try {
     const allExistingUsers = db.query("SELECT * FROM users").all() as any[];

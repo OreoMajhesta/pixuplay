@@ -1,19 +1,30 @@
-import React from 'react';
-import { UserProfile } from '../types';
+import React, { useState } from 'react';
+import { UserProfile, FriendProfile } from '../types';
 import { ProfileFriendsSection } from '../components/profile/ProfileFriendsSection';
+import { FriendChatModal } from '../components/chat/FriendChatModal';
 import { Users, ArrowLeft } from 'lucide-react';
 
 interface FriendsPageProps {
   currentUser: UserProfile | null;
   onNavigateTab: (tab: string) => void;
   onOpenLogin: () => void;
+  onJoinNobarRoom?: (roomId: string) => void;
+  activeNobarRoomId?: string | null;
+  activeNobarAnimeTitle?: string;
+  activeNobarEpisode?: number;
 }
 
 export const FriendsPage: React.FC<FriendsPageProps> = ({
   currentUser,
   onNavigateTab,
   onOpenLogin,
+  onJoinNobarRoom,
+  activeNobarRoomId,
+  activeNobarAnimeTitle,
+  activeNobarEpisode,
 }) => {
+  const [activeChatFriend, setActiveChatFriend] = useState<FriendProfile | null>(null);
+
   if (!currentUser) {
     return (
       <div className="max-w-2xl mx-auto px-4 py-16 text-center space-y-5 animate-fade-in">
@@ -55,7 +66,22 @@ export const FriendsPage: React.FC<FriendsPageProps> = ({
       </div>
 
       {/* Main Friends Management Section */}
-      <ProfileFriendsSection currentUser={currentUser} />
+      <ProfileFriendsSection
+        currentUser={currentUser}
+        onOpenChatWithFriend={(friend) => setActiveChatFriend(friend)}
+      />
+
+      {/* Direct Chat / Nobar Invite Modal */}
+      <FriendChatModal
+        isOpen={!!activeChatFriend}
+        onClose={() => setActiveChatFriend(null)}
+        currentUser={currentUser}
+        friend={activeChatFriend}
+        onJoinNobarRoom={onJoinNobarRoom}
+        activeNobarRoomId={activeNobarRoomId}
+        activeNobarAnimeTitle={activeNobarAnimeTitle}
+        activeNobarEpisode={activeNobarEpisode}
+      />
     </div>
   );
 };

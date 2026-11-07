@@ -146,6 +146,19 @@ export interface FriendItem {
   createdAt: string;
 }
 
+export interface DirectMessageItem {
+  id: number;
+  senderId: string;
+  receiverId: string;
+  message: string;
+  msgType: 'text' | 'nobar_invite';
+  nobarRoomId?: string;
+  nobarAnimeTitle?: string;
+  nobarEpisode?: number;
+  isRead: boolean;
+  createdAt: string;
+}
+
 export interface FriendListData {
   friends: FriendProfile[];
   pendingReceived: FriendItem[];

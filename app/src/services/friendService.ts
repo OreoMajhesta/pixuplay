@@ -98,3 +98,49 @@ export async function removeFriendApi(friendId: string): Promise<{ status: boole
     return { status: false, message: e?.message || 'Gagal menghapus teman' };
   }
 }
+
+export async function fetchDirectMessages(friendId: string): Promise<import('../types').DirectMessageItem[]> {
+  const token = getStoredToken();
+  if (!token || !friendId) return [];
+
+  try {
+    const res = await fetch(`/api/pixuplay/friends/messages?friendId=${encodeURIComponent(friendId)}`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+    if (!res.ok) return [];
+    const json = await res.json();
+    return json.data || [];
+  } catch (e) {
+    console.warn('Failed to fetch direct messages', e);
+    return [];
+  }
+}
+
+export async function sendDirectMessageApi(params: {
+  receiverId: string;
+  message: string;
+  msgType?: 'text' | 'nobar_invite';
+  nobarRoomId?: string;
+  nobarAnimeTitle?: string;
+  nobarEpisode?: number;
+}): Promise<{ status: boolean; message: string; messageItem?: import('../types').DirectMessageItem }> {
+  const token = getStoredToken();
+  if (!token) return { status: false, message: 'Harap login terlebih dahulu' };
+
+  try {
+    const res = await fetch('/api/pixuplay/friends/messages/send', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify(params),
+    });
+    const json = await res.json();
+    return json;
+  } catch (e: any) {
+    return { status: false, message: e?.message || 'Gagal mengirim pesan' };
+  }
+}

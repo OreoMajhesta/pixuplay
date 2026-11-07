@@ -234,3 +234,115 @@ export function getFriendList(userId: string): {
 
   return { friends, pendingReceived, pendingSent };
 }
+
+export interface DirectMessageItem {
+  id: number;
+  senderId: string;
+  receiverId: string;
+  message: string;
+  msgType: 'text' | 'nobar_invite';
+  nobarRoomId?: string;
+  nobarAnimeTitle?: string;
+  nobarEpisode?: number;
+  isRead: boolean;
+  createdAt: string;
+}
+
+// 6. Direct Chat & Nobar Invite functions
+export function sendDirectMessage(
+  senderId: string,
+  receiverId: string,
+  message: string,
+  msgType: 'text' | 'nobar_invite' = 'text',
+  nobarRoomId?: string,
+  nobarAnimeTitle?: string,
+  nobarEpisode?: number
+): { status: boolean; message: string; messageItem?: DirectMessageItem } {
+  // Check if they are friends
+  const friendship = db
+    .query(
+      `SELECT status FROM friendships WHERE ((user_id = ? AND friend_id = ?) OR (user_id = ? AND friend_id = ?)) AND status = 'accepted'`
+    )
+    .get(senderId, receiverId, receiverId, senderId);
+
+  if (!friendship) {
+    return { status: false, message: 'Anda hanya dapat mengirim pesan ke pengguna yang sudah berteman' };
+  }
+
+  const cleanText = message.trim().slice(0, 500);
+  if (!cleanText && msgType !== 'nobar_invite') {
+    return { status: false, message: 'Pesan tidak boleh kosong' };
+  }
+
+  const stmt = db.prepare(`
+    INSERT INTO direct_messages (sender_id, receiver_id, message, msg_type, nobar_room_id, nobar_anime_title, nobar_episode)
+    VALUES (?, ?, ?, ?, ?, ?, ?)
+  `);
+
+  const res = stmt.run(
+    senderId,
+    receiverId,
+    cleanText || (msgType === 'nobar_invite' ? `Mengundang Anda ke Room Nobar ${nobarAnimeTitle || ''}` : ''),
+    msgType,
+    nobarRoomId || null,
+    nobarAnimeTitle || null,
+    nobarEpisode || null
+  );
+
+  const insertedId = Number(res.lastInsertRowid);
+  const row = db.query(`SELECT * FROM direct_messages WHERE id = ?`).get(insertedId) as any;
+
+  return {
+    status: true,
+    message: 'Pesan terkirim',
+    messageItem: {
+      id: row.id,
+      senderId: row.sender_id,
+      receiverId: row.receiver_id,
+      message: row.message,
+      msgType: row.msg_type,
+      nobarRoomId: row.nobar_room_id || undefined,
+      nobarAnimeTitle: row.nobar_anime_title || undefined,
+      nobarEpisode: row.nobar_episode || undefined,
+      isRead: !!row.is_read,
+      createdAt: row.created_at,
+    },
+  };
+}
+
+export function getDirectMessages(
+  userId: string,
+  friendId: string,
+  limit: number = 50
+): DirectMessageItem[] {
+  // Mark received messages as read
+  db.query(`UPDATE direct_messages SET is_read = 1 WHERE sender_id = ? AND receiver_id = ? AND is_read = 0`).run(
+    friendId,
+    userId
+  );
+
+  const rows = db
+    .query(
+      `
+    SELECT * FROM direct_messages
+    WHERE (sender_id = ? AND receiver_id = ?) OR (sender_id = ? AND receiver_id = ?)
+    ORDER BY created_at ASC
+    LIMIT ?
+  `
+    )
+    .all(userId, friendId, friendId, userId, limit) as any[];
+
+  return rows.map((r) => ({
+    id: r.id,
+    senderId: r.sender_id,
+    receiverId: r.receiver_id,
+    message: r.message,
+    msgType: r.msg_type,
+    nobarRoomId: r.nobar_room_id || undefined,
+    nobarAnimeTitle: r.nobar_anime_title || undefined,
+    nobarEpisode: r.nobar_episode || undefined,
+    isRead: !!r.is_read,
+    createdAt: r.created_at,
+  }));
+}
+

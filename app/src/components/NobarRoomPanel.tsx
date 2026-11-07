@@ -11,8 +11,10 @@ import {
   Radio,
   ChevronDown,
   ShieldAlert,
+  Share2,
 } from 'lucide-react';
 import { NobarRoomInfo, NobarChatMsg } from '../nobarSync';
+import { ShareNobarToFriendsModal } from './chat/ShareNobarToFriendsModal';
 import { getOrCreateGuestName } from '../api';
 
 interface NobarRoomPanelProps {
@@ -48,6 +50,7 @@ export const NobarRoomPanel: React.FC<NobarRoomPanelProps> = ({
   const [hostNameInput, setHostNameInput] = useState<string>(() => defaultUserName || getOrCreateGuestName());
   const [isScrolledUp, setIsScrolledUp] = useState(false);
   const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
+  const [showShareModal, setShowShareModal] = useState(false);
 
   useEffect(() => {
     if (defaultUserName) {
@@ -178,12 +181,21 @@ export const NobarRoomPanel: React.FC<NobarRoomPanelProps> = ({
 
         <div className="flex items-center gap-1.5">
           <button
+            onClick={() => setShowShareModal(true)}
+            className="px-2.5 py-1.5 rounded-lg bg-red-600/20 hover:bg-red-600/30 text-red-300 hover:text-white transition-colors cursor-pointer text-[10px] font-semibold flex items-center gap-1 border border-red-500/30"
+            title="Undang Teman ke Room Nobar"
+          >
+            <Users className="w-3 h-3 text-red-400" />
+            <span className="hidden sm:inline">Kirim ke Teman</span>
+          </button>
+
+          <button
             onClick={handleCopy}
             className="px-2.5 py-1.5 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-neutral-200 hover:text-white transition-colors cursor-pointer text-[10px] font-semibold flex items-center gap-1 border border-subtle"
             title="Salin Link Room"
           >
             {copied ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
-            <span className="hidden sm:inline">{copied ? 'Tersalin' : 'Bagikan'}</span>
+            <span className="hidden sm:inline">{copied ? 'Tersalin' : 'Salin Link'}</span>
           </button>
 
           <button
@@ -335,6 +347,15 @@ export const NobarRoomPanel: React.FC<NobarRoomPanelProps> = ({
           <Send className="w-3.5 h-3.5" />
         </button>
       </form>
+
+      {/* Share Nobar to Friends Modal */}
+      <ShareNobarToFriendsModal
+        isOpen={showShareModal}
+        onClose={() => setShowShareModal(false)}
+        roomId={room.id}
+        animeTitle={room.animeTitle}
+        episode={room.episode}
+      />
     </div>
   );
 };

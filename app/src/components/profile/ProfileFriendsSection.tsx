@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Users, UserPlus, Check, X, Search, Shield, Trash2, Clock, Sparkles } from 'lucide-react';
+import { Users, UserPlus, Check, X, Search, Shield, Trash2, Clock, Sparkles, MessageCircle } from 'lucide-react';
 import { FriendListData, FriendProfile, UserProfile } from '../../types';
 import {
   fetchFriends,
@@ -11,9 +11,13 @@ import {
 
 interface ProfileFriendsSectionProps {
   currentUser: UserProfile;
+  onOpenChatWithFriend?: (friend: FriendProfile) => void;
 }
 
-export const ProfileFriendsSection: React.FC<ProfileFriendsSectionProps> = ({ currentUser }) => {
+export const ProfileFriendsSection: React.FC<ProfileFriendsSectionProps> = ({
+  currentUser,
+  onOpenChatWithFriend,
+}) => {
   const [data, setData] = useState<FriendListData>({
     friends: [],
     pendingReceived: [],
@@ -280,13 +284,26 @@ export const ProfileFriendsSection: React.FC<ProfileFriendsSectionProps> = ({ cu
                   </div>
                 </div>
 
-                <button
-                  onClick={() => handleRemoveFriend(friend)}
-                  className="opacity-0 group-hover:opacity-100 p-2 text-neutral-500 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-all cursor-pointer"
-                  title="Hapus Teman"
-                >
-                  <Trash2 className="w-3.5 h-3.5" />
-                </button>
+                <div className="flex items-center gap-1.5">
+                  {onOpenChatWithFriend && (
+                    <button
+                      onClick={() => onOpenChatWithFriend(friend)}
+                      className="px-2.5 py-1.5 bg-neutral-800 hover:bg-neutral-700 text-neutral-200 hover:text-white rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1"
+                      title="Chat dengan Teman"
+                    >
+                      <MessageCircle className="w-3.5 h-3.5 text-red-400" />
+                      <span>Chat</span>
+                    </button>
+                  )}
+
+                  <button
+                    onClick={() => handleRemoveFriend(friend)}
+                    className="opacity-0 group-hover:opacity-100 p-2 text-neutral-500 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-all cursor-pointer"
+                    title="Hapus Teman"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+                </div>
               </div>
             ))}
           </div>

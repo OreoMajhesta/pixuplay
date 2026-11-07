@@ -965,6 +965,13 @@ export const App: React.FC = () => {
                   currentUser={currentUser}
                   onNavigateTab={handleNavigateTab}
                   onOpenLogin={() => handleNavigateTab('profil')}
+                  onJoinNobarRoom={(roomId) => {
+                    handleNobarRoomChange(roomId);
+                    handleNavigateTab('home');
+                  }}
+                  activeNobarRoomId={activeNobarRoomId}
+                  activeNobarAnimeTitle={playingAnime ? getAnimeTitle(playingAnime) : undefined}
+                  activeNobarEpisode={playingEpisode}
                 />
               )}
             </>

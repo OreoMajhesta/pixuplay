@@ -6,6 +6,8 @@ import {
   respondFriendRequest,
   removeFriend,
   getFriendList,
+  sendDirectMessage,
+  getDirectMessages,
 } from '../services/friendService';
 
 export async function handleFriendRoutes(req: Request, url: URL, clientIp: string): Promise<Response | null> {
@@ -81,6 +83,46 @@ export async function handleFriendRoutes(req: Request, url: URL, clientIp: strin
 
     const result = removeFriend(user.id, String(body.friendId));
     return jsonResponse(result);
+  }
+
+  // 6. Direct Chat Messages (Get Chat History)
+  if (pathname === '/api/pixuplay/friends/messages' && req.method === 'GET') {
+    const user = getSessionUser(req);
+    if (!user) {
+      return jsonResponse({ status: false, message: 'Harap masuk terlebih dahulu' }, 401);
+    }
+    const friendId = url.searchParams.get('friendId');
+    if (!friendId) {
+      return jsonResponse({ status: false, message: 'friendId diperlukan' }, 400);
+    }
+    const messages = getDirectMessages(user.id, friendId);
+    return jsonResponse({ status: true, data: messages });
+  }
+
+  // 7. Send Direct Chat Message or Nobar Room Invite
+  if (pathname === '/api/pixuplay/friends/messages/send' && req.method === 'POST') {
+    if (isRateLimited(`friend_dm_${clientIp}`, 40, 60000)) {
+      return jsonResponse({ status: false, message: 'Terlalu banyak mengirim pesan. Mohon tunggu.' }, 429);
+    }
+    const user = getSessionUser(req);
+    if (!user) {
+      return jsonResponse({ status: false, message: 'Harap masuk terlebih dahulu' }, 401);
+    }
+    const { data: body, error: bodyError } = await parseJsonBody(req, 8192);
+    if (bodyError || !body?.receiverId) {
+      return jsonResponse({ status: false, message: bodyError || 'receiverId diperlukan' }, 400);
+    }
+
+    const result = sendDirectMessage(
+      user.id,
+      String(body.receiverId),
+      String(body.message || ''),
+      body.msgType === 'nobar_invite' ? 'nobar_invite' : 'text',
+      body.nobarRoomId ? String(body.nobarRoomId) : undefined,
+      body.nobarAnimeTitle ? String(body.nobarAnimeTitle) : undefined,
+      body.nobarEpisode ? Number(body.nobarEpisode) : undefined
+    );
+    return jsonResponse(result, result.status ? 200 : 400);
   }
 
   return null;
