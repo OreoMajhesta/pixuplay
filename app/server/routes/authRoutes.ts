@@ -130,13 +130,9 @@ export async function handleAuthRoutes(req: Request, url: URL, clientIp: string)
   }
 
   // 7. Watch Time Heartbeat & EXP
-  // Rate limit: Per-IP 120 req/min (protects server DDoS while supporting 15-20 devices on same WiFi/NAT)
-  // Per-User 6 req/min (strict anti-cheat level/EXP per account)
+  // Pure Per-User rate limit (max 6 req/min) + real elapsed time validation.
+  // No IP restriction to prevent blocking entire shared public IP / CGNAT / ISP networks. DDoS protection is handled by Cloudflare WAF.
   if (pathname === "/api/pixuplay/user/watch-heartbeat" && req.method === "POST") {
-    if (isRateLimited(`hb_ip_${clientIp}`, 120, 60000)) {
-      return jsonResponse({ status: false, message: "Terlalu banyak permintaan dari jaringan ini. Mohon tunggu sebentar." }, 429);
-    }
-
     const user = getSessionUser(req);
     if (!user) {
       return jsonResponse({ status: false, message: "Akses ditolak" }, 401);
