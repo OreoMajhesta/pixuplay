@@ -44,13 +44,34 @@ export function saveUserSyncData(
   }
 }
 
+const userLastHeartbeat = new Map<string, number>();
+
 export function recordWatchHeartbeat(
   userId: string,
   seconds: number,
   isRewatch: boolean = false
 ): { success: boolean; user?: any; error?: string } {
   try {
-    const cleanSeconds = Math.max(1, Math.min(60, Number(seconds) || 15));
+    const now = Date.now();
+    const lastTime = userLastHeartbeat.get(userId) || 0;
+    const elapsedSeconds = (now - lastTime) / 1000;
+
+    // Strict throttle restriction: minimum 10 seconds between heartbeats
+    if (lastTime > 0 && elapsedSeconds < 10) {
+      return {
+        success: false,
+        error: "Heartbeat terlalu sering. Maksimal 1 request per interval menonton.",
+      };
+    }
+
+    // Anti-bruteforce: cap credited seconds to actual elapsed real time (plus small 5s grace margin)
+    // If it's the very first heartbeat, cap at max 60 seconds
+    const maxCreditedSeconds = lastTime > 0 ? Math.min(60, Math.ceil(elapsedSeconds) + 5) : 60;
+    const requestedSeconds = Math.max(1, Math.min(60, Number(seconds) || 15));
+    const cleanSeconds = Math.min(requestedSeconds, maxCreditedSeconds);
+
+    userLastHeartbeat.set(userId, now);
+
     const row = db.query("SELECT watch_time_seconds, exp FROM users WHERE id = ?").get(userId) as any;
     if (!row) return { success: false, error: "User tidak ditemukan" };
 
@@ -58,7 +79,8 @@ export function recordWatchHeartbeat(
     const currentExp = Number(row?.exp) || 0;
 
     const newSec = currentSec + cleanSeconds;
-    const expGained = Math.round(cleanSeconds * (10 / 60)) + (isRewatch ? 25 : 0);
+    // Calculate realistic EXP: 10 EXP per 60 seconds (1 minute of watching)
+    const expGained = Math.round(cleanSeconds * (10 / 60));
     const newExp = currentExp + expGained;
 
     const levelInfo = calculateLevelData(newExp);

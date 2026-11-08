@@ -129,17 +129,25 @@ export async function handleAuthRoutes(req: Request, url: URL, clientIp: string)
     });
   }
 
-  // 7. Watch Time Heartbeat & EXP
+  // 7. Watch Time Heartbeat & EXP (Strict rate limit: max 6 requests per minute per IP and per User)
   if (pathname === "/api/pixuplay/user/watch-heartbeat" && req.method === "POST") {
+    if (isRateLimited(`hb_ip_${clientIp}`, 6, 60000)) {
+      return jsonResponse({ status: false, message: "Terlalu banyak permintaan heartbeat" }, 429);
+    }
+
     const user = getSessionUser(req);
     if (!user) {
       return jsonResponse({ status: false, message: "Akses ditolak" }, 401);
     }
 
+    if (isRateLimited(`hb_usr_${user.id}`, 6, 60000)) {
+      return jsonResponse({ status: false, message: "Detak menonton terlalu cepat" }, 429);
+    }
+
     const { data: body } = await parseJsonBody(req, 2048);
     const result = recordWatchHeartbeat(user.id, body?.seconds, body?.isRewatch);
     if (!result.success) {
-      return jsonResponse({ status: false, message: result.error }, 500);
+      return jsonResponse({ status: false, message: result.error }, 429);
     }
 
     return jsonResponse({ status: true, user: result.user });
